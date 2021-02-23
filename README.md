@@ -1,4 +1,21 @@
-#
+# VAE-GAN
+
+# Topics:
+[Apparel Design](https://arxiv.org/pdf/2009.01053.pdf)
+
+# Fashion
+[kaggle prject](https://www.kaggle.com/ethanwharris/fashion-mnist-vae-with-pytorch-and-torchbearer)
+
+[github project](https://github.com/ANLGBOY/VAE-with-PyTorch)
+
+
+# Other Datasets:
+[Shoe dataset](http://vision.cs.utexas.edu/projects/finegrained/utzap50k/) 
+
+
+[Deep fashion](http://mmlab.ie.cuhk.edu.hk/projects/DeepFashion.html)
+
+
 
 - Medium blogs on VAE
 https://towardsdatascience.com/intuitively-understanding-variational-autoencoders-1bfe67eb5daf
@@ -17,6 +34,7 @@ Cons:
 
 Reading:
 paper: https://arxiv.org/pdf/1312.6114.pdf?source=post_page---------------------------
+
 Ch 20, Deep Learing: https://www.deeplearningbook.org/contents/generative_models.html
 
 Autoencoder Reading:
@@ -25,6 +43,7 @@ Ch 14, Deep Learining: https://www.deeplearningbook.org/contents/autoencoders.ht
 Examples:
 VAE -> CF:
 Paper: https://arxiv.org/pdf/1802.05814.pdf
+
 code: https://github.com/dawenl/vae_cf/blob/master/VAE_ML20M_WWW2018.ipynb
 
 GAN
@@ -32,6 +51,7 @@ GAN
 
 VAE+GAN
 [Paper1](https://arxiv.org/pdf/1706.04987.pdf)
+
 [Paper2](https://arxiv.org/pdf/1705.07761.pdf)
 
 GAN applications:
@@ -46,18 +66,4 @@ Optical flow uncertainity estimation: Multi-hypothesis
 https://bair.berkeley.edu/blog/2019/09/19/bit-swap/
 
 
-VAE-GAN
-
-# Topics:
-[Apparel Design](https://arxiv.org/pdf/2009.01053.pdf)
-
-# Fashion
-[kaggle prject](https://www.kaggle.com/ethanwharris/fashion-mnist-vae-with-pytorch-and-torchbearer)
-[github project](https://github.com/ANLGBOY/VAE-with-PyTorch)
-
-No Dataset provideds
-
-# Other Datasets:
-[Shoe dataset](http://vision.cs.utexas.edu/projects/finegrained/utzap50k/)
-[Deep fashion](http://mmlab.ie.cuhk.edu.hk/projects/DeepFashion.html)
 
