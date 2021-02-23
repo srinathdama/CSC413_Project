@@ -16,7 +16,7 @@
 [Deep fashion](http://mmlab.ie.cuhk.edu.hk/projects/DeepFashion.html)
 
 
-
+# References
 - Medium blogs on VAE
 https://towardsdatascience.com/intuitively-understanding-variational-autoencoders-1bfe67eb5daf
 
