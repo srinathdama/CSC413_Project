@@ -1,4 +1,26 @@
-# VAE-GAN
+
+# 1. Cluster GAN
+## Paper: https://arxiv.org/pdf/1809.03627.pdf 
+
+code (authors, Tensorflow): https://github.com/sudiptodip15/ClusterGAN 
+
+code (PyTorch): https://github.com/zhampel/clusterGAN 
+
+# 2. VAEs for clustering
+## Paper 1: Deep Unsupervised Clustering with Gaussian Mixture Variational Autoencoders (https://arxiv.org/abs/1611.02648)
+
+code (authors, lua): https://github.com/Nat-D/GMVAE
+
+
+## Paper 2: Variational Deep Embedding : A Generative Approach to Clustering (https://arxiv.org/pdf/1611.05148.pdf)
+
+code (keras): https://github.com/slim1017/VaDE
+
+# Miscellaneous:
+
+Deep Clustering repos compilation: https://github.com/zhoushengisnoob/DeepClustering
+
+# 3. VAE-GAN
 
 # Topics:
 [Apparel Design](https://arxiv.org/pdf/2009.01053.pdf)
