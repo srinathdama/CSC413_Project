@@ -23,6 +23,8 @@ try:
     from torchvision.utils import save_image
     
     from itertools import chain as ichain
+    from sklearn.metrics.cluster import adjusted_rand_score
+    from sklearn.metrics.cluster import normalized_mutual_info_score
 
     from clusgan.definitions import DATASETS_DIR, RUNS_DIR
     from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
@@ -274,6 +276,12 @@ def main():
         r_imgs, i_label = real_imgs.data[:n_samp], itruth_label[:n_samp]
         e_zn, e_zc, e_zc_logits = encoder(r_imgs)
         reg_imgs = generator(e_zn, e_zc)
+        # print(i_label)
+        # print(torch.argmax(e_zc, 1))
+        print("NMI:" )
+        print(normalized_mutual_info_score(i_label, torch.argmax(e_zc, 1).cpu()))
+        print("ARI")
+        print(adjusted_rand_score(i_label, torch.argmax(e_zc, 1).cpu()))
         save_image(r_imgs.data[:n_samp],
                    '%s/real_%06i.png' %(imgs_dir, epoch), 
                    nrow=n_sqrt_samp, normalize=True)
