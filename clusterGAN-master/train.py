@@ -243,11 +243,15 @@ def main():
         n_samp = n_sqrt_samp * n_sqrt_samp
 
 
-        ## Cycle through test real -> enc -> gen
+        ## Cycle through test real -> encoder -> generator
         t_imgs, t_label = test_imgs.data, test_labels
         #r_imgs, i_label = real_imgs.data[:n_samp], itruth_label[:n_samp]
         # Encode sample real instances
         e_tzn, e_tzc, e_tzc_logits = encoder(t_imgs)
+        print("NMI:" )
+        print(normalized_mutual_info_score(t_label, torch.argmax(e_tzc, 1).cpu()))
+        print("ARI")
+        print(adjusted_rand_score(t_label, torch.argmax(e_tzc, 1).cpu()))
         # Generate sample instances from encoding
         teg_imgs = generator(e_tzn, e_tzc)
         # Calculate cycle reconstruction loss
@@ -278,10 +282,6 @@ def main():
         reg_imgs = generator(e_zn, e_zc)
         # print(i_label)
         # print(torch.argmax(e_zc, 1))
-        print("NMI:" )
-        print(normalized_mutual_info_score(i_label, torch.argmax(e_zc, 1).cpu()))
-        print("ARI")
-        print(adjusted_rand_score(i_label, torch.argmax(e_zc, 1).cpu()))
         save_image(r_imgs.data[:n_samp],
                    '%s/real_%06i.png' %(imgs_dir, epoch), 
                    nrow=n_sqrt_samp, normalize=True)
