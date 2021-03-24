@@ -6,6 +6,7 @@ try:
     import numpy as np
 
     import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     import pandas as pd
@@ -45,6 +46,7 @@ def main():
     parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    parser.add_argument("-betac", "--betac", dest="betac", default=10, type=float, help="Beta_c")
     args = parser.parse_args()
 
     run_name = args.run_name
@@ -69,7 +71,7 @@ def main():
     latent_dim = 30
     n_c = 10
     betan = 10
-    betac = 10
+    betac = args.betac
    
     # Wasserstein metric flag
     # Wasserstein metric flag

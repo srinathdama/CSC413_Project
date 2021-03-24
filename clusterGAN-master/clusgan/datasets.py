@@ -50,7 +50,7 @@ def get_dataloader(dataset_name='mnist', data_dir='', batch_size=64, train_set=T
     dset = get_dataset(dataset_name)
 
     dataloader = torch.utils.data.DataLoader(
-        dset("C:\\Users\\BOBLY\\zzz\\MNIST", train=train_set, download=False,
+        dset("/home/srinath/Project/clusterGAN-pytorch/clusterGAN/MNIST/", train=train_set, download=False,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))

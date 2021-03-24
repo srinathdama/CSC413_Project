@@ -6,6 +6,7 @@ try:
     import numpy as np
 
     import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     import pandas as pd
@@ -44,9 +45,9 @@ classifier.load_state_dict(torch.load("mnist_cnn.pt"))
 generator = Generator_CNN(30, 10, (1, 28, 28)).to(device) 
 encoder = Encoder_CNN(30, 10).to(device) 
 
-encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\500epoch_z30_van_bs64_test_run\\models\\encoder.pth.tar",
+encoder_dict = torch.load("/home/srinath/Project/CSC413_Project/clusterGAN-master/runs/mnist/300epoch_z30_van_bs64_beta_c_12/models/encoder.pth.tar",
                             map_location=device)  
-generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\500epoch_z30_van_bs64_test_run\\models\\generator.pth.tar",
+generator_dict = torch.load("/home/srinath/Project/CSC413_Project/clusterGAN-master/runs/mnist/300epoch_z30_van_bs64_beta_c_12/models/generator.pth.tar",
                             map_location=device) 
 
 generator.load_state_dict(generator_dict)
