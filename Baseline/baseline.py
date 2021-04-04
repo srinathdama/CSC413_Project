@@ -8,6 +8,9 @@ from scipy.stats import mode
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import confusion_matrix
 from sklearn.mixture import GaussianMixture 
+from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.metrics.cluster import normalized_mutual_info_score
+
 import seaborn as sns; sns.set()
 import pandas as pd
 # import os
@@ -72,6 +75,8 @@ def run_clustering(method, noof_clusters, target_names, mnist_path, data_set):
 
     labels    = map_cluster_to_labels(clusters, labels_tr, noof_clusters)
     train_acc = accuracy_score(labels_tr, labels)
+    train_ARI = adjusted_rand_score(labels_tr, labels)
+    train_NMI = normalized_mutual_info_score(labels_tr, labels)
     print('train_acc :', train_acc)
     plot_confusion_matrix(labels_tr, labels, target_names, 
                     F'{data_set}_{method}_'+str(noof_clusters)+'_train_confusion_matrix.png')
@@ -87,14 +92,20 @@ def run_clustering(method, noof_clusters, target_names, mnist_path, data_set):
     clusters  = model.predict(images_te.reshape(images_te.shape[0], -1))
     labels    = map_cluster_to_labels(clusters, labels_te, noof_clusters)
     test_acc  = accuracy_score(labels_te, labels)
+    test_ARI = adjusted_rand_score(labels_te, labels)
+    test_NMI = normalized_mutual_info_score(labels_te, labels)
     print('test_acc :', test_acc)
     plot_confusion_matrix(labels_te, labels, target_names, 
                     F'{data_set}_{method}_'+str(noof_clusters)+'_test_confusion_matrix.png')
 
     mnist_results = pd.DataFrame({
+                                        'noof_clusters':[noof_clusters],
                                         'train accuracy':[train_acc],
                                         'test accuracy':[test_acc],
-                                        'noof_clusters':[noof_clusters]
+                                        'train ARI':[train_ARI],
+                                        'test ARI':[test_ARI],
+                                        'train NMI':[train_NMI],
+                                        'test NMI':[test_NMI],
                                         })
     mnist_results.to_csv(F'{data_set}_{method}_'+str(noof_clusters)+'_results.csv')
 

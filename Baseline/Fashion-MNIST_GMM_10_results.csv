@@ -1,2 +1,2 @@
-,train accuracy,test accuracy,noof_clusters
-0,0.47246666666666665,0.4652,10
+,noof_clusters,train accuracy,test accuracy,train ARI,test ARI,train NMI,test NMI
+0,10,0.47246666666666665,0.4652,0.3278050362421666,0.3238586026584525,0.5096296958494065,0.5042458779950402
