@@ -39,13 +39,50 @@ except ImportError as e:
 
 def main():
 
+    global args
+    parser = argparse.ArgumentParser(description="Convolutional NN Training Script")
+    parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
+    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
+    parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
+    parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
+    parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
+    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    args = parser.parse_args()
+
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cuda = True if torch.cuda.is_available() else False
-             
+
+    mtype = 'vae_vanilla'
+
+    run_name = args.run_name
+    dataset_name = args.dataset_name
+
+    # Training details
+    n_epochs = args.n_epochs
+    batch_size = args.batch_size
+
+    latent_dim = 10
+
     generator = Decoder_CNN(10, (1, 28, 28)).to(device) 
     encoder = Encoder_CNN(10).to(device) 
 
-    dir_path = '/home/srinath/Project/CSC413_Project/ClusterVAE/runs/mnist/200epoch_z10_vae_vanilla_bs256_test_run/'
+    # Make directory structure for this run
+    sep_und = '_'
+    run_name_comps = ['%iepoch'%n_epochs, 'z%s'%str(latent_dim), mtype, 'bs%i'%batch_size, run_name]
+    run_name = sep_und.join(run_name_comps)
+
+    run_dir = os.path.join(RUNS_DIR, dataset_name, run_name)
+    data_dir = os.path.join(DATASETS_DIR, dataset_name)
+    imgs_dir = os.path.join(run_dir, 'images')
+    models_dir = os.path.join(run_dir, 'models')
+
+    os.makedirs(data_dir, exist_ok=True)
+    os.makedirs(run_dir, exist_ok=True)
+    os.makedirs(imgs_dir, exist_ok=True)
+    os.makedirs(models_dir, exist_ok=True)
+
+    # dir_path = '/home/srinath/Project/CSC413_Project/ClusterVAE/runs/mnist/200epoch_z10_vae_vanilla_bs256_test_run/'
+    dir_path = run_dir
     encoder_dict = torch.load(os.path.join(dir_path, "models/encoder.pth.tar"),
                                 map_location=device)  
     generator_dict = torch.load(os.path.join(dir_path, "models/generator.pth.tar"),
@@ -101,10 +138,10 @@ def main():
     noof_clusters = 10
     target_names  = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     save_path     = dir_path
-    data_set      = 'MNIST'
-    run_clustering('Kmeans', noof_clusters, target_names, save_path, data_set, train_data, test_data)
+    # data_set      = 'MNIST'
+    run_clustering('Kmeans', noof_clusters, target_names, save_path, dataset_name, train_data, test_data)
 
-    run_clustering('GMM', noof_clusters, target_names, save_path, data_set, train_data, test_data)
+    run_clustering('GMM', noof_clusters, target_names, save_path, dataset_name, train_data, test_data)
 
 
 if __name__ == "__main__":

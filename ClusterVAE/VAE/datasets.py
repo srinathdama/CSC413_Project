@@ -16,7 +16,8 @@ except ImportError as e:
 
 
 DATASET_FN_DICT = {'mnist' : datasets.MNIST,
-                   'fashion-mnist' : datasets.FashionMNIST
+                   'fashion-mnist' : datasets.FashionMNIST,
+                   'cifar10' : datasets.CIFAR10
                   }
 
 
@@ -49,14 +50,26 @@ def get_dataloader(dataset_name='mnist', data_dir='', batch_size=64, train_set=T
 
     dset = get_dataset(dataset_name)
 
-    dataloader = torch.utils.data.DataLoader(
-        dset("/home/srinath/Project/clusterGAN-pytorch/clusterGAN/MNIST/", train=train_set, download=False,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                       ])),
-        num_workers=num_workers,
-        batch_size=batch_size,
-        shuffle=True)
+    if dataset_name=='mnist':
+        dataloader = torch.utils.data.DataLoader(
+            dset("/home/srinath/Project/CSC413_Project/DATASETS/MNIST/", train=train_set, download=False,
+                        transform=transforms.Compose([
+                            transforms.ToTensor(),
+                            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                        ])),
+            num_workers=num_workers,
+            batch_size=batch_size,
+            shuffle=True)
+    else:
+        dataloader = torch.utils.data.DataLoader(
+            dset(data_dir, train=train_set, download=True,
+                        transform=transforms.Compose([
+                            transforms.ToTensor(),
+                            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                        ])),
+            num_workers=num_workers,
+            batch_size=batch_size,
+            shuffle=True)
+
 
     return dataloader
