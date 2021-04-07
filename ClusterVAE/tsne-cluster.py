@@ -29,6 +29,7 @@ try:
     from itertools import chain as ichain
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
     from VAE.models import Encoder_CNN, Decoder_CNN
     from VAE.datasets import get_dataloader, dataset_list
 
@@ -43,12 +44,15 @@ def main():
     parser = argparse.ArgumentParser(description="TSNE generation script")
     parser.add_argument("-r", "--run_dir", dest="run_dir", help="Training run directory")
     parser.add_argument("-p", "--perplexity", dest="perplexity", default=-1, type=int,  help="TSNE perplexity")
-    parser.add_argument("-n", "--n_samples", dest="n_samples", default=100, type=int,  help="Number of samples")
+    parser.add_argument("-n", "--n_samples", dest="n_samples", default=1000, type=int,  help="Number of samples")
+    parser.add_argument('--ae', dest='vae_flag', action='store_false')
+    parser.set_defaults(vae_flag=True)
     args = parser.parse_args()
 
     # TSNE setup
     n_samples = args.n_samples
     perplexity = args.perplexity
+    vae_flag  = args.vae_flag
     
     # Directory structure for this run
     run_dir = args.run_dir.rstrip("/")
@@ -64,12 +68,19 @@ def main():
     # Latent space info
     train_df = pd.read_csv('%s/training_details.csv'%(run_dir))
     latent_dim = train_df['latent_dim'][0]
-    n_c = train_df['n_classes'][0]
+    # n_c = train_df['n_classes'][0]
+    n_c = 10
 
     cuda = True if torch.cuda.is_available() else False
     
+
     # Load encoder model
-    encoder = Encoder_CNN(latent_dim, n_c)
+    if dataset_name == 'cifar10':
+        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+    else:
+        encoder = Encoder_CNN(latent_dim, vae_flag)
+    
+    # encoder = Encoder_CNN(latent_dim)
     enc_figname = os.path.join(models_dir, encoder.name + '.pth.tar')
     encoder.load_state_dict(torch.load(enc_figname))
     encoder.cuda()
@@ -95,14 +106,17 @@ def main():
     c_imgs = Variable(imgs.type(Tensor), requires_grad=False)
     
     # Encode real images
-    enc_zmu, enc_sigma = encoder(c_imgs)
+    if vae_flag:
+        enc_zmu, enc_sigma = encoder(c_imgs)
+    else:
+        enc_zmu = encoder(c_imgs)
 	
     # Stack latent space encoding
     #enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc_logits.cpu().detach().numpy()))
     #enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc.cpu().detach().numpy()))
 
     # Cluster with TSNE
-    tsne_enc = tsne.fit_transform(enc_zmu)
+    tsne_enc = tsne.fit_transform(enc_zmu.detach().cpu().numpy())
 
     # Convert to numpy for indexing purposes
     labels = labels.cpu().data.numpy()

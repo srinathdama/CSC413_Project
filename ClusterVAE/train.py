@@ -4,6 +4,7 @@ try:
     import argparse
     import os
     import numpy as np
+    from datetime import datetime
 
     import matplotlib
     matplotlib.use('Agg')
@@ -38,6 +39,8 @@ except ImportError as e:
     raise ImportError
 
 def main():
+    startTime = datetime.now().timestamp()
+
     global args
     parser = argparse.ArgumentParser(description="Convolutional NN Training Script")
     parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
@@ -153,10 +156,11 @@ def main():
     ge_l = []
     mse_l = []
     kl_l =[]
+
+    test_ge_l = []
+    test_mse_l = []
+    test_kl_l =[]
     
-    c_zn = []
-    c_zc = []
-    c_i = []
     
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -219,10 +223,50 @@ def main():
         else:
             ge_l.append(loss.item())
 
+        # Generator in eval mode
+        decoder.eval()
+        encoder.eval()
+        t_imgs, t_label = test_imgs.data, test_labels
+        # Encode the generated images
+        z_img = encoder(t_imgs)
+        
+        if vae_flag:
+            [mu, sigma] = z_img
+            # reparametrization trix 
+            z = mu+torch.randn_like(mu)*sigma
+        else:
+            z = z_img
+
+        # Generate a batch of images
+        gen_imgs = decoder(z)
+        if vae_flag:
+            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / test_batch_size
+            # print(marginal_likelihood2.item(), marginal_likelihood.item())
+            KL_divergence = 0.5 * torch.sum(
+                                        torch.pow(mu, 2) +
+                                        torch.pow(sigma, 2) -
+                                        torch.log(1e-8 + torch.pow(sigma, 2)) - 1
+                                    ).sum() / batchsize
+            # calculte loss
+            loss = -(marginal_likelihood - KL_divergence)      
+        else:
+            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / test_batch_size
+            loss = -marginal_likelihood
+        
+        if vae_flag:
+            test_ge_l.append(loss.item())
+            test_mse_l.append(-marginal_likelihood.item())
+            test_kl_l.append(KL_divergence.item())
+        else:
+            test_ge_l.append(loss.item())
+
    
     
     print('done training!')
 
+    loop_time = (datetime.now().timestamp() - startTime)
+
+    print(loop_time)
 
     # Save training results
     if vae_flag:
@@ -235,7 +279,11 @@ def main():
                                 'latent_dim' : latent_dim,
                                 'gen_enc_loss' : ['G+E', ge_l],
                                 'mse_loss' : ['MSE', mse_l],
-                                'kl_loss' : ['KL', kl_l]
+                                'kl_loss' : ['KL', kl_l],
+                                'test_gen_enc_loss' : ['G+E test', test_ge_l],
+                                'test_mse_loss' : ['MSE test', test_mse_l],
+                                'test_kl_loss' : ['KL test', test_kl_l],
+                                'time' : loop_time
                                 })
     else:
         train_df = pd.DataFrame({
@@ -245,7 +293,9 @@ def main():
                             'beta_2' : b2,
                             'weight_decay' : decay,
                             'latent_dim' : latent_dim,
-                            'gen_enc_loss' : ['G+E', ge_l]
+                            'gen_enc_loss' : ['MSE', ge_l],
+                            'test_gen_enc_loss' : ['MSE test', test_ge_l],
+                            'time' : loop_time
                         })
 
     train_df.to_csv('%s/training_details.csv'%(run_dir))
@@ -254,12 +304,13 @@ def main():
     # Plot some training results
     if vae_flag:
         plot_train_loss(df=train_df,
-                        arr_list=['gen_enc_loss', 'mse_loss', 'kl_loss'],
+                        arr_list=['gen_enc_loss', 'mse_loss', 'kl_loss',
+                         'test_gen_enc_loss', 'test_mse_loss', 'test_kl_loss'],
                         figname='%s/training_model_losses.png'%(run_dir)
                         )
     else:
         plot_train_loss(df=train_df,
-                        arr_list=['gen_enc_loss'],
+                        arr_list=['gen_enc_loss', 'test_gen_enc_loss'],
                         figname='%s/training_model_losses.png'%(run_dir)
                         )
 
@@ -268,10 +319,10 @@ def main():
     #                 figname='%s/training_cycle_loss.png'%(run_dir)
     #                 )
 
-
     # Save current state of trained models
     model_list = [encoder, decoder]
     save_model(models=model_list, out_dir=models_dir)
+
 
 
 if __name__ == "__main__":
