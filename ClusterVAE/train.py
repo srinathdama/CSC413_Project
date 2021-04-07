@@ -29,6 +29,7 @@ try:
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
     from VAE.models import Decoder_CNN, Encoder_CNN
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
     from VAE.utils import save_model, sample_z, cross_entropy, run_clustering
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.plots import plot_train_loss
@@ -44,13 +45,16 @@ def main():
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
     parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=10, type=int, help="Number of dataset workers")
+    parser.add_argument('--ae', dest='vae_flag', action='store_false')
+    parser.set_defaults(vae_flag=True)
     args = parser.parse_args()
 
     run_name = args.run_name
     dataset_name = args.dataset_name
     device_id = args.gpu
     num_workers = args.num_workers
+    vae_flag  = args.vae_flag
 
     # Training details
     n_epochs = args.n_epochs
@@ -62,11 +66,15 @@ def main():
     decay = 2.5*1e-5
     n_skip_iter = 1 #5
 
-    img_size = 28
-    channels = 1
+    if dataset_name == 'cifar10':
+        img_size = 32
+        channels = 3
+    else:
+        img_size = 28
+        channels = 1
    
     # Latent space info
-    latent_dim = 10
+    latent_dim = 50
     betan = 10
     # betac = args.betac
    
@@ -75,7 +83,10 @@ def main():
     # if (wass_metric):
     #     mtype = 'wass'
     
-    mtype = 'vae_vanilla' 
+    if vae_flag:
+        mtype = 'vae_vanilla' 
+    else:
+        mtype = 'ae' 
     # Make directory structure for this run
     sep_und = '_'
     run_name_comps = ['%iepoch'%n_epochs, 'z%s'%str(latent_dim), mtype, 'bs%i'%batch_size, run_name]
@@ -104,8 +115,12 @@ def main():
     mse_loss = torch.nn.MSELoss()
     
     # Initialize generator and discriminator
-    decoder = Decoder_CNN(latent_dim, x_shape)
-    encoder = Encoder_CNN(latent_dim)
+    if dataset_name == 'cifar10':
+        decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
+        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+    else:
+        decoder = Decoder_CNN(latent_dim, x_shape)
+        encoder = Encoder_CNN(latent_dim, vae_flag)
     
     if cuda:
         decoder.cuda()
@@ -167,61 +182,86 @@ def main():
 
 
             # Encode the generated images
-            mu, sigma = encoder(real_imgs)
+            z_img = encoder(real_imgs)
             
-            # reparametrization trix 
-            z = mu+torch.randn_like(mu)*sigma
+            if vae_flag:
+                [mu, sigma] = z_img
+                # reparametrization trix 
+                z = mu+torch.randn_like(mu)*sigma
+            else:
+                z = z_img
 
             # Generate a batch of images
             gen_imgs = decoder(z)
 
-            marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / batchsize
-            # print(marginal_likelihood2.item(), marginal_likelihood.item())
-            KL_divergence = 0.5 * torch.sum(
-                                        torch.pow(mu, 2) +
-                                        torch.pow(sigma, 2) -
-                                        torch.log(1e-8 + torch.pow(sigma, 2)) - 1
-                                    ).sum() / batchsize
-    
-            # calculte loss
-            loss = -(marginal_likelihood - KL_divergence)
+            if vae_flag:
+                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / batchsize
+                # print(marginal_likelihood2.item(), marginal_likelihood.item())
+                KL_divergence = 0.5 * torch.sum(
+                                            torch.pow(mu, 2) +
+                                            torch.pow(sigma, 2) -
+                                            torch.log(1e-8 + torch.pow(sigma, 2)) - 1
+                                        ).sum() / batchsize
+                # calculte loss
+                loss = -(marginal_likelihood - KL_divergence)      
+            else:
+                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / batchsize
+                loss = -marginal_likelihood
 
             loss.backward(retain_graph=True)
             optimizer_GE.step()
 
         # Save training losses
-        ge_l.append(loss.item())
-        mse_l.append(-marginal_likelihood.item())
-        kl_l.append(KL_divergence.item())
-        
+        if vae_flag:
+            ge_l.append(loss.item())
+            mse_l.append(-marginal_likelihood.item())
+            kl_l.append(KL_divergence.item())
+        else:
+            ge_l.append(loss.item())
+
    
     
     print('done training!')
 
-    
-
 
     # Save training results
-    train_df = pd.DataFrame({
-                             'n_epochs' : n_epochs,
-                             'learning_rate' : lr,
-                             'beta_1' : b1,
-                             'beta_2' : b2,
-                             'weight_decay' : decay,
-                             'latent_dim' : latent_dim,
-                             'gen_enc_loss' : ['G+E', ge_l],
-                             'mse_loss' : ['MSE', mse_l],
-                             'kl_loss' : ['KL', kl_l]
-                            })
+    if vae_flag:
+        train_df = pd.DataFrame({
+                                'n_epochs' : n_epochs,
+                                'learning_rate' : lr,
+                                'beta_1' : b1,
+                                'beta_2' : b2,
+                                'weight_decay' : decay,
+                                'latent_dim' : latent_dim,
+                                'gen_enc_loss' : ['G+E', ge_l],
+                                'mse_loss' : ['MSE', mse_l],
+                                'kl_loss' : ['KL', kl_l]
+                                })
+    else:
+        train_df = pd.DataFrame({
+                            'n_epochs' : n_epochs,
+                            'learning_rate' : lr,
+                            'beta_1' : b1,
+                            'beta_2' : b2,
+                            'weight_decay' : decay,
+                            'latent_dim' : latent_dim,
+                            'gen_enc_loss' : ['G+E', ge_l]
+                        })
 
     train_df.to_csv('%s/training_details.csv'%(run_dir))
 
 
     # Plot some training results
-    plot_train_loss(df=train_df,
-                    arr_list=['gen_enc_loss', 'mse_loss', 'kl_loss'],
-                    figname='%s/training_model_losses.png'%(run_dir)
-                    )
+    if vae_flag:
+        plot_train_loss(df=train_df,
+                        arr_list=['gen_enc_loss', 'mse_loss', 'kl_loss'],
+                        figname='%s/training_model_losses.png'%(run_dir)
+                        )
+    else:
+        plot_train_loss(df=train_df,
+                        arr_list=['gen_enc_loss'],
+                        figname='%s/training_model_losses.png'%(run_dir)
+                        )
 
     # plot_train_loss(df=train_df,
     #                 arr_list=['zn_cycle_loss', 'zc_cycle_loss', 'img_cycle_loss'],

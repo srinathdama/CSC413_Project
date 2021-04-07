@@ -98,7 +98,7 @@ class Encoder_CNN(nn.Module):
     Input is vector X from image space if dimension X_dim
     Output is vector z from representation space of dimension z_dim
     """
-    def __init__(self, latent_dim, verbose=False):
+    def __init__(self, latent_dim, VAE=True, verbose=False):
         super(Encoder_CNN, self).__init__()
 
         self.name = 'encoder'
@@ -108,6 +108,11 @@ class Encoder_CNN(nn.Module):
         self.iels = int(np.prod(self.cshape))
         self.lshape = (self.iels,)
         self.verbose = verbose
+        self.vae_flag = VAE
+        if self.vae_flag:
+            self.out_dim = 2*latent_dim
+        else:
+            self.out_dim = latent_dim
         
         self.model = nn.Sequential(
             # Convolutional layers
@@ -122,7 +127,7 @@ class Encoder_CNN(nn.Module):
             # Fully connected layers
             torch.nn.Linear(self.iels, 1024),
             nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Linear(1024, 2*latent_dim)
+            torch.nn.Linear(1024, self.out_dim)
         )
 
         initialize_weights(self)
@@ -135,12 +140,17 @@ class Encoder_CNN(nn.Module):
         z_img = self.model(in_feat)
         # Reshape for output
         z = z_img.view(z_img.shape[0], -1)
-        # Separate mu and sigma
-        mu = z[:, 0:self.latent_dim]
 
-        # ensure sigma is postive 
-        sigma = 1e-6 + F.softplus(z[:, self.latent_dim:])
+        if self.vae_flag:
+            # Separate mu and sigma
+            mu = z[:, 0:self.latent_dim]
+
+            # ensure sigma is postive 
+            sigma = 1e-6 + F.softplus(z[:, self.latent_dim:])
+            
+            return [mu, sigma]
+        else:
+            return z
         
-        return mu, sigma
 
 

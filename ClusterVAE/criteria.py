@@ -29,6 +29,7 @@ try:
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
     from VAE.models import Decoder_CNN, Encoder_CNN
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
     from VAE.utils import save_model, sample_z, cross_entropy, run_clustering
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.plots import plot_train_loss
@@ -47,24 +48,45 @@ def main():
     parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    parser.add_argument('--ae', dest='vae_flag', action='store_false')
+    parser.set_defaults(vae_flag=True)
     args = parser.parse_args()
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cuda = True if torch.cuda.is_available() else False
 
-    mtype = 'vae_vanilla'
+    vae_flag  = args.vae_flag
+
+    if vae_flag:
+        mtype = 'vae_vanilla' 
+    else:
+        mtype = 'ae' 
 
     run_name = args.run_name
     dataset_name = args.dataset_name
+    if dataset_name == 'cifar10':
+        img_size = 32
+        channels = 3
+    else:
+        img_size = 28
+        channels = 1
+
 
     # Training details
     n_epochs = args.n_epochs
     batch_size = args.batch_size
 
-    latent_dim = 10
+    latent_dim = 50
 
-    generator = Decoder_CNN(10, (1, 28, 28)).to(device) 
-    encoder = Encoder_CNN(10).to(device) 
+    x_shape = (channels, img_size, img_size)
+
+    # Initialize generator and discriminator
+    if dataset_name == 'cifar10':
+        generator = CIFAR_Decoder_CNN(latent_dim, x_shape).to(device) 
+        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag).to(device) 
+    else:
+        generator = Decoder_CNN(latent_dim, x_shape).to(device) 
+        encoder = Encoder_CNN(latent_dim, vae_flag).to(device) 
 
     # Make directory structure for this run
     sep_und = '_'
@@ -113,22 +135,34 @@ def main():
     test_label = []
     
     batch_size = 5000
-    traindataloader = get_dataloader(train_set=True, batch_size=batch_size)
+    traindataloader =   get_dataloader(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                batch_size=batch_size,
+                                train_set=True)
     for i, (imgs, itruth_label) in enumerate(traindataloader):
         train_imgs = Variable(imgs.type(Tensor))
         with torch.no_grad():
-            mu, sigma  = encoder(train_imgs)
+            if vae_flag:
+                [mu, sigma]  = encoder(train_imgs)
+            else:
+                mu = encoder(train_imgs)
         mu_train.append(mu.cpu().numpy())
         train_label.append(itruth_label)
     mu_train = np.concatenate(mu_train, axis=0)
     train_label = np.concatenate(train_label, axis=0)
     train_data = [mu_train, train_label]
 
-    testdataloader = get_dataloader(train_set=False, batch_size=batch_size)
+    testdataloader =  get_dataloader(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                batch_size=batch_size,
+                                train_set=False)
     for i, (imgs, itruth_label) in enumerate(testdataloader):
         train_imgs = Variable(imgs.type(Tensor))
         with torch.no_grad():
-            mu, sigma  = encoder(train_imgs)
+            if vae_flag:
+                [mu, sigma]  = encoder(train_imgs)
+            else:
+                mu = encoder(train_imgs)
         mu_test.append(mu.cpu().numpy())
         test_label.append(itruth_label)
     mu_test = np.concatenate(mu_test, axis=0)

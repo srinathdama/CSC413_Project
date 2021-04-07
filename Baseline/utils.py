@@ -2,6 +2,7 @@ import os
 import gzip
 import numpy as np
 import struct
+from datasets import get_dataloader, dataset_list
 
 def load_mnist_gz(path, kind='train'):
 
@@ -60,4 +61,23 @@ def load_mnist(path, kind='train'):
     
     images = read_images_idx_file(images_path)
 
+    return [images, labels]
+
+
+def load_data(data_set, data_dir, train_flag):
+    batch_size = 5000
+    dataloader = get_dataloader(dataset_name=data_set,
+                                data_dir=data_dir,
+                                batch_size=batch_size,
+                                train_set=train_flag)
+
+    images = []
+    labels = []
+
+    for i, (imgs, itruth_label) in enumerate(dataloader):
+        images.append(imgs.numpy())
+        labels.append(itruth_label.numpy())
+    
+    images = np.concatenate(images, axis=0)
+    labels = np.concatenate(labels, axis=0)
     return [images, labels]
