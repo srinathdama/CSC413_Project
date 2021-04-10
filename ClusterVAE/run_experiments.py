@@ -56,9 +56,9 @@ import numpy as np
 # for latent_dim in latent_dims:
 #     subprocess.run('python train.py -n 300 -r SmallNet_latent_dem_sensitivity_normalized_ -b 256 -d '+str(latent_dim) + ' -l ' + str(4e-4) + ' -s cifar10 ', shell=True)
 
-batch_sizes = [32, 64, 128]
+batch_sizes = [32, 64, 128, 256]
 lrs         = 1e-4* np.asarray(batch_sizes, dtype= float)/batch_sizes[0]
 # latent_dims = [5]
 for batch_size, lr in zip(batch_sizes, lrs):
-    subprocess.run('python train.py -n 300 -r SmallNet_batch_sensitivity_normalized_ -d 30 -b '+str(batch_size) + ' -l ' + str(lr) + ' -s cifar10 ', shell=True)
+    subprocess.run('python train.py -n 300 -r SmallNet1_batch_sensitivity_normalized -d 30 -b '+str(batch_size) + ' -l ' + str(lr) + ' -s cifar10 ', shell=True)
 

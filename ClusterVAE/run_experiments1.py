@@ -38,4 +38,4 @@ import numpy as np
 betas = [2, 3, 4, 5]
 # latent_dims = [5]
 for beta in betas:
-    subprocess.run('python train.py -n 300 -r SmallNet_beta_sensitivity_'+str(beta)+' -b 128 -d 30 -v '+str(beta) + ' -l ' + str(2e-4) + ' -s cifar10 ', shell=True)
+    subprocess.run('python train.py -n 300 -r SmallNet1_beta_sensitivity_'+str(beta)+' -b 128 -d 30 -v '+str(beta) + ' -l ' + str(2e-4) + ' -s cifar10 ', shell=True)

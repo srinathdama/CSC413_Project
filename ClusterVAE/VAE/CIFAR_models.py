@@ -191,21 +191,35 @@ class CIFAR_SEncoder_CNN(nn.Module):
         else:
             self.out_dim = latent_dim
         
+        # self.model = nn.Sequential(
+        #     # Convolutional layers
+        #     nn.Conv2d(self.channels, 64, 4, stride=2, bias=True),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     nn.Conv2d(64, 128, 4, stride=2, bias=True),
+        #     nn.LeakyReLU(0.2, inplace=True),
+            
+        #     # Flatten
+        #     Reshape(self.lshape),
+            
+        #     # Fully connected layers
+        #     torch.nn.Linear(self.iels, 1024),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     torch.nn.Linear(1024, self.out_dim)
+        # )
+
+        # https://github.com/1Konny/Beta-VAE/blob/master/model.py
         self.model = nn.Sequential(
-            # Convolutional layers
-            nn.Conv2d(self.channels, 64, 4, stride=2, bias=True),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, 4, stride=2, bias=True),
-            nn.LeakyReLU(0.2, inplace=True),
-            
-            # Flatten
-            Reshape(self.lshape),
-            
-            # Fully connected layers
-            torch.nn.Linear(self.iels, 1024),
-            nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Linear(1024, self.out_dim)
-        )
+            nn.Conv2d(self.channels, 32, 4, 2, 1),          # B,  32, 16, 16
+            nn.ReLU(True),
+            nn.Conv2d(32, 64, 4, 2, 1),          # B,  64, 8, 8
+            nn.ReLU(True),
+            nn.Conv2d(64, 64, 4, 2, 1),          # B,  64, 4,  4
+            nn.ReLU(True),
+            nn.Conv2d(64, 256, 4, 1),            # B, 256,  1,  1
+            nn.ReLU(True),
+            Reshape((256*1*1,)),                 # B, 256
+            nn.Linear(256, self.out_dim)         # B, z_dim*2)
+            )             
 
         initialize_weights(self)
         
@@ -246,27 +260,40 @@ class CIFAR_SDecoder_CNN(nn.Module):
         self.iels = int(np.prod(self.ishape))
         self.verbose = verbose
         
-        self.model = nn.Sequential(
-            # Fully connected layers
-            torch.nn.Linear(self.latent_dim, 1024),
-            nn.BatchNorm1d(1024),
-            #torch.nn.ReLU(True),
-            nn.LeakyReLU(0.2, inplace=True),
-            torch.nn.Linear(1024, self.iels),
-            nn.BatchNorm1d(self.iels),
-            #torch.nn.ReLU(True),
-            nn.LeakyReLU(0.2, inplace=True),
+        # self.model = nn.Sequential(
+        #     # Fully connected layers
+        #     torch.nn.Linear(self.latent_dim, 1024),
+        #     nn.BatchNorm1d(1024),
+        #     #torch.nn.ReLU(True),
+        #     nn.LeakyReLU(0.2, inplace=True),
+        #     torch.nn.Linear(1024, self.iels),
+        #     nn.BatchNorm1d(self.iels),
+        #     #torch.nn.ReLU(True),
+        #     nn.LeakyReLU(0.2, inplace=True),
         
-            # Reshape to 128 x (8x8)
-            Reshape(self.ishape),
+        #     # Reshape to 128 x (8x8)
+        #     Reshape(self.ishape),
 
-            # Upconvolution layers
-            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1, bias=True),
-            nn.BatchNorm2d(64),
-            #torch.nn.ReLU(True),
-            nn.LeakyReLU(0.2, inplace=True),
+        #     # Upconvolution layers
+        #     nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1, bias=True),
+        #     nn.BatchNorm2d(64),
+        #     #torch.nn.ReLU(True),
+        #     nn.LeakyReLU(0.2, inplace=True),
             
-            nn.ConvTranspose2d(64, 3, 4, stride=2, padding=1, bias=True),
+        #     nn.ConvTranspose2d(64, 3, 4, stride=2, padding=1, bias=True),
+        #     nn.Sigmoid()
+        # )
+        self.model = nn.Sequential(
+            nn.Linear(self.latent_dim, 256),               # B, 256
+            Reshape((256, 1, 1)),               # B, 256,  1,  1
+            nn.ReLU(True),
+            nn.ConvTranspose2d(256, 64, 4),      # B,  64,  4,  4
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 64, 4, 2, 1), # B,  64,  8,  8
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 32, 4, 2, 1), # B,  32, 16, 16
+            nn.ReLU(True),
+            nn.ConvTranspose2d(32, 3, 4, 2, 1), # B,  3, 32, 32
             nn.Sigmoid()
         )
 
