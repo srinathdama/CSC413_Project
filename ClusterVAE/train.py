@@ -30,7 +30,7 @@ try:
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
     from VAE.models import Decoder_CNN, Encoder_CNN
-    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN, CIFAR_SDecoder_CNN, CIFAR_SEncoder_CNN
     from VAE.utils import save_model, sample_z, cross_entropy, run_clustering
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.plots import plot_train_loss
@@ -46,11 +46,18 @@ def main():
     parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
     parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
+    parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=10, type=int, help="latent dimension")
+    parser.add_argument("-v", "--beta_vae", dest="beta_vae", default=1, type=int, help="beta vae")
+    parser.add_argument("-l", "--lr", dest="lr", default=1e-4, type=float, help="learning rate")
     parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=10, type=int, help="Number of dataset workers")
+    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=4, type=int, help="Number of dataset workers")
     parser.add_argument('--ae', dest='vae_flag', action='store_false')
+    parser.add_argument('--cifar_big_arch', dest='cifar_big_arch', action='store_true')
+    parser.add_argument('--printtime', dest='print_time', action='store_true')
     parser.set_defaults(vae_flag=True)
+    parser.set_defaults(cifar_big_arch=False)
+    parser.set_defaults(print_time=False)
     args = parser.parse_args()
 
     run_name = args.run_name
@@ -58,12 +65,15 @@ def main():
     device_id = args.gpu
     num_workers = args.num_workers
     vae_flag  = args.vae_flag
+    print_time = args.print_time
+    beta_vae   = args.beta_vae
+    cifar_big_arch = args.cifar_big_arch
 
     # Training details
     n_epochs = args.n_epochs
     batch_size = args.batch_size
     test_batch_size = 5000
-    lr = 1e-4
+    lr = args.lr
     b1 = 0.5
     b2 = 0.9 #99
     decay = 2.5*1e-5
@@ -75,9 +85,9 @@ def main():
     else:
         img_size = 28
         channels = 1
-   
+    
     # Latent space info
-    latent_dim = 50
+    latent_dim = args.latent_dim
     betan = 10
     # betac = args.betac
    
@@ -113,14 +123,18 @@ def main():
     torch.cuda.set_device(device_id)
 
     # Loss function
-    bce_loss = torch.nn.BCELoss()
+    bce_loss = torch.nn.BCELoss(reduction='sum')
     xe_loss = torch.nn.CrossEntropyLoss()
     mse_loss = torch.nn.MSELoss()
     
     # Initialize generator and discriminator
     if dataset_name == 'cifar10':
-        decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
-        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+        if cifar_big_arch:
+            decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
+            encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+        else:
+            decoder = CIFAR_SDecoder_CNN(latent_dim, x_shape)
+            encoder = CIFAR_SEncoder_CNN(latent_dim, vae_flag)
     else:
         decoder = Decoder_CNN(latent_dim, x_shape)
         encoder = Encoder_CNN(latent_dim, vae_flag)
@@ -160,11 +174,15 @@ def main():
     test_ge_l = []
     test_mse_l = []
     test_kl_l =[]
+    # bse_loss = nn.BCELoss(reduction='sum')
     
+    # print_time = True
     
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
     for epoch in range(n_epochs):
+        if print_time:
+            time_epoch0 = datetime.now().timestamp()
         for i, (imgs, itruth_label) in enumerate(dataloader):
            
             batchsize = imgs.shape[0]
@@ -199,7 +217,8 @@ def main():
             gen_imgs = decoder(z)
 
             if vae_flag:
-                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / batchsize
+                # marginal_likelihood = -0.5*torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
+                marginal_likelihood = -bce_loss(gen_imgs, real_imgs) / (batchsize*channels)
                 # print(marginal_likelihood2.item(), marginal_likelihood.item())
                 KL_divergence = 0.5 * torch.sum(
                                             torch.pow(mu, 2) +
@@ -207,9 +226,9 @@ def main():
                                             torch.log(1e-8 + torch.pow(sigma, 2)) - 1
                                         ).sum() / batchsize
                 # calculte loss
-                loss = -(marginal_likelihood - KL_divergence)      
+                loss = -(marginal_likelihood - beta_vae*KL_divergence)      
             else:
-                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / batchsize
+                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
                 loss = -marginal_likelihood
 
             loss.backward(retain_graph=True)
@@ -240,17 +259,18 @@ def main():
         # Generate a batch of images
         gen_imgs = decoder(z)
         if vae_flag:
-            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / test_batch_size
+            # marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
+            marginal_likelihood = -bce_loss(gen_imgs, t_imgs) / (test_batch_size*channels)
             # print(marginal_likelihood2.item(), marginal_likelihood.item())
             KL_divergence = 0.5 * torch.sum(
                                         torch.pow(mu, 2) +
                                         torch.pow(sigma, 2) -
                                         torch.log(1e-8 + torch.pow(sigma, 2)) - 1
-                                    ).sum() / batchsize
+                                    ).sum() / test_batch_size
             # calculte loss
-            loss = -(marginal_likelihood - KL_divergence)      
+            loss = -(marginal_likelihood - beta_vae*KL_divergence)      
         else:
-            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / test_batch_size
+            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
             loss = -marginal_likelihood
         
         if vae_flag:
@@ -260,13 +280,16 @@ def main():
         else:
             test_ge_l.append(loss.item())
 
+        if print_time:
+            delta_time_epoch = datetime.now().timestamp() - time_epoch0
+            print('epoch :', epoch, ', time :', delta_time_epoch)
    
     
     print('done training!')
 
     loop_time = (datetime.now().timestamp() - startTime)
 
-    print(loop_time)
+    print('total time :', loop_time)
 
     # Save training results
     if vae_flag:
@@ -277,6 +300,7 @@ def main():
                                 'beta_2' : b2,
                                 'weight_decay' : decay,
                                 'latent_dim' : latent_dim,
+                                'cifar_big_arch' : cifar_big_arch,
                                 'gen_enc_loss' : ['G+E', ge_l],
                                 'mse_loss' : ['MSE', mse_l],
                                 'kl_loss' : ['KL', kl_l],
@@ -293,6 +317,7 @@ def main():
                             'beta_2' : b2,
                             'weight_decay' : decay,
                             'latent_dim' : latent_dim,
+                            'cifar_big_arch' : cifar_big_arch,
                             'gen_enc_loss' : ['MSE', ge_l],
                             'test_gen_enc_loss' : ['MSE test', test_ge_l],
                             'time' : loop_time

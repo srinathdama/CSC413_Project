@@ -29,7 +29,7 @@ try:
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
     from VAE.models import Decoder_CNN, Encoder_CNN
-    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN, CIFAR_SDecoder_CNN, CIFAR_SEncoder_CNN
     from VAE.utils import save_model, sample_z, cross_entropy, run_clustering
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.plots import plot_train_loss
@@ -41,16 +41,30 @@ except ImportError as e:
 def main():
 
     global args
-    parser = argparse.ArgumentParser(description="Convolutional NN Training Script")
-    parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
-    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
-    parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
-    parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
-    parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
+    parser = argparse.ArgumentParser(description="Script to save generated examples from learned ClusterGAN generator")
+    parser.add_argument("-r", "--run_dir", dest="run_dir", help="Training run directory")
+    parser.add_argument("-b", "--batch_size", dest="batch_size", default=5000, type=int, help="Batch size")
     parser.add_argument('--ae', dest='vae_flag', action='store_false')
     parser.set_defaults(vae_flag=True)
     args = parser.parse_args()
+
+    batch_size = args.batch_size
+    vae_flag  = args.vae_flag
+    
+    # Directory structure for this run
+    run_dir = args.run_dir.rstrip("/")
+    run_name = run_dir.split(os.sep)[-1]
+    dataset_name = run_dir.split(os.sep)[-2]
+    
+    run_dir = os.path.join(RUNS_DIR, dataset_name, run_name)
+    data_dir = os.path.join(DATASETS_DIR, dataset_name)
+    imgs_dir = os.path.join(run_dir, 'images')
+    models_dir = os.path.join(run_dir, 'models')
+
+
+    # Latent space info
+    train_df = pd.read_csv('%s/training_details.csv'%(run_dir))
+    latent_dim = train_df['latent_dim'][0]
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cuda = True if torch.cuda.is_available() else False
@@ -62,8 +76,8 @@ def main():
     else:
         mtype = 'ae' 
 
-    run_name = args.run_name
-    dataset_name = args.dataset_name
+    # run_name = args.run_name
+    # dataset_name = args.dataset_name
     if dataset_name == 'cifar10':
         img_size = 32
         channels = 3
@@ -73,35 +87,40 @@ def main():
 
 
     # Training details
-    n_epochs = args.n_epochs
-    batch_size = args.batch_size
+    # n_epochs = args.n_epochs
+    # batch_size = args.batch_size
 
-    latent_dim = 50
+    # latent_dim = args.latent_dim
 
     x_shape = (channels, img_size, img_size)
 
     # Initialize generator and discriminator
     if dataset_name == 'cifar10':
-        generator = CIFAR_Decoder_CNN(latent_dim, x_shape).to(device) 
-        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag).to(device) 
+        cifar_big_arch = False
+        if cifar_big_arch:
+            generator = CIFAR_Decoder_CNN(latent_dim, x_shape).to(device)
+            encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag).to(device)
+        else:
+            generator = CIFAR_SDecoder_CNN(latent_dim, x_shape).to(device)
+            encoder = CIFAR_SEncoder_CNN(latent_dim, vae_flag).to(device)
     else:
         generator = Decoder_CNN(latent_dim, x_shape).to(device) 
         encoder = Encoder_CNN(latent_dim, vae_flag).to(device) 
 
-    # Make directory structure for this run
-    sep_und = '_'
-    run_name_comps = ['%iepoch'%n_epochs, 'z%s'%str(latent_dim), mtype, 'bs%i'%batch_size, run_name]
-    run_name = sep_und.join(run_name_comps)
+    # # Make directory structure for this run
+    # sep_und = '_'
+    # run_name_comps = ['%iepoch'%n_epochs, 'z%s'%str(latent_dim), mtype, 'bs%i'%batch_size, run_name]
+    # run_name = sep_und.join(run_name_comps)
 
-    run_dir = os.path.join(RUNS_DIR, dataset_name, run_name)
-    data_dir = os.path.join(DATASETS_DIR, dataset_name)
-    imgs_dir = os.path.join(run_dir, 'images')
-    models_dir = os.path.join(run_dir, 'models')
+    # run_dir = os.path.join(RUNS_DIR, dataset_name, run_name)
+    # data_dir = os.path.join(DATASETS_DIR, dataset_name)
+    # imgs_dir = os.path.join(run_dir, 'images')
+    # models_dir = os.path.join(run_dir, 'models')
 
-    os.makedirs(data_dir, exist_ok=True)
-    os.makedirs(run_dir, exist_ok=True)
-    os.makedirs(imgs_dir, exist_ok=True)
-    os.makedirs(models_dir, exist_ok=True)
+    # os.makedirs(data_dir, exist_ok=True)
+    # os.makedirs(run_dir, exist_ok=True)
+    # os.makedirs(imgs_dir, exist_ok=True)
+    # os.makedirs(models_dir, exist_ok=True)
 
     # dir_path = '/home/srinath/Project/CSC413_Project/ClusterVAE/runs/mnist/200epoch_z10_vae_vanilla_bs256_test_run/'
     dir_path = run_dir

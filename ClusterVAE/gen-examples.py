@@ -28,7 +28,7 @@ try:
     from itertools import chain as ichain
 
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
-    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN
+    from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN, CIFAR_SDecoder_CNN, CIFAR_SEncoder_CNN
     from VAE.models import Encoder_CNN, Decoder_CNN
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.utils import sample_z
@@ -80,8 +80,13 @@ def main():
     
 
     if dataset_name == 'cifar10':
-        decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
-        encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+        cifar_big_arch = False
+        if cifar_big_arch:
+            decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
+            encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
+        else:
+            decoder = CIFAR_SDecoder_CNN(latent_dim, x_shape)
+            encoder = CIFAR_SEncoder_CNN(latent_dim, vae_flag)
     else:
         decoder = Decoder_CNN(latent_dim, x_shape)
         encoder = Encoder_CNN(latent_dim, vae_flag)
