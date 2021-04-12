@@ -76,7 +76,7 @@ def main():
 
     # Load encoder model
     if dataset_name == 'cifar10':
-        cifar_big_arch = False
+        cifar_big_arch = True
         if cifar_big_arch:
             encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
         else:

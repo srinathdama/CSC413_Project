@@ -80,7 +80,7 @@ def main():
     
 
     if dataset_name == 'cifar10':
-        cifar_big_arch = False
+        cifar_big_arch = True
         if cifar_big_arch:
             decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
             encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)

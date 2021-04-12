@@ -56,9 +56,16 @@ import numpy as np
 # for latent_dim in latent_dims:
 #     subprocess.run('python train.py -n 300 -r SmallNet_latent_dem_sensitivity_normalized_ -b 256 -d '+str(latent_dim) + ' -l ' + str(4e-4) + ' -s cifar10 ', shell=True)
 
-batch_sizes = [32, 64, 128, 256]
-lrs         = 1e-4* np.asarray(batch_sizes, dtype= float)/batch_sizes[0]
+# batch_sizes = [32, 64, 128, 256]
+# lrs         = 1e-4* np.asarray(batch_sizes, dtype= float)/batch_sizes[0]
+# # latent_dims = [5]
+# for batch_size, lr in zip(batch_sizes, lrs):
+#     subprocess.run('python train.py -n 300 -r SmallNet1_batch_sensitivity_normalized -d 30 -b '+str(batch_size) + ' -l ' + str(lr) + ' -s cifar10 ', shell=True)
+
+
+sigmas = [1e-1, 2e-1, 4e-1, 6e-1, 8e-1]
 # latent_dims = [5]
-for batch_size, lr in zip(batch_sizes, lrs):
-    subprocess.run('python train.py -n 300 -r SmallNet1_batch_sensitivity_normalized -d 30 -b '+str(batch_size) + ' -l ' + str(lr) + ' -s cifar10 ', shell=True)
+for sigma in sigmas:
+    subprocess.run('python train.py -n 300 -r cifar_k3_gaussian_sigma_sensitivity_'+str(sigma)+' -b 128 -d 50 --sigma_scale '+str(sigma) + ' -l ' + str(2e-4) + ' -s cifar10 --cifar_big_arch', shell=True)
+
 

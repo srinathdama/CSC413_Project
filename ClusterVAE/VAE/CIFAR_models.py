@@ -51,6 +51,11 @@ class CIFAR_Decoder_CNN(nn.Module):
         self.latent_dim = latent_dim
         self.x_shape = x_shape
         self.ishape = (448, 2, 2)
+        self.kernal  = 3  #4
+        if self.kernal == 3:
+            self.outpadding = 1
+        else:
+            self.outpadding = 0
         self.iels = int(np.prod(self.ishape))
         self.verbose = verbose
         
@@ -65,23 +70,27 @@ class CIFAR_Decoder_CNN(nn.Module):
             Reshape(self.ishape),
 
             # Upconvolution layers
-            nn.ConvTranspose2d(448, 256, 4, stride=2, padding=1, bias=True),
+            nn.ConvTranspose2d(448, 256, self.kernal, stride=2, padding=1, 
+                                output_padding = self.outpadding, bias=True),  # B,  256, 4, 4
             nn.BatchNorm2d(256),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1, bias=True),
+            nn.ConvTranspose2d(256, 128, self.kernal, stride=2, padding=1, 
+                                output_padding = self.outpadding, bias=True),  # B,  256, 8, 8
             nn.BatchNorm2d(128),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
 
             # Upconvolution layers
-            nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1, bias=True),
+            nn.ConvTranspose2d(128, 64, self.kernal, stride=2, padding=1, 
+                                output_padding = self.outpadding, bias=True),  # B,  256, 16, 16
             nn.BatchNorm2d(64),
             #torch.nn.ReLU(True),
             nn.LeakyReLU(0.2, inplace=True),
             
-            nn.ConvTranspose2d(64, 3, 4, stride=2, padding=1, bias=True),
+            nn.ConvTranspose2d(64, 3, self.kernal, stride=2, padding=1, 
+                                output_padding = self.outpadding, bias=True),  # B,  256, 32, 32
             nn.Sigmoid()
         )
 
@@ -115,6 +124,7 @@ class CIFAR_Encoder_CNN(nn.Module):
         self.iels = int(np.prod(self.cshape))
         self.lshape = (self.iels,)
         self.verbose = verbose
+        self.kernal  = 3  #4
         self.vae_flag = VAE
         if self.vae_flag:
             self.out_dim = 2*latent_dim
@@ -123,19 +133,19 @@ class CIFAR_Encoder_CNN(nn.Module):
         
         self.model = nn.Sequential(
             # Convolutional layers
-            nn.Conv2d(self.channels, 64, 4, stride=2, padding=1, bias=True),
+            nn.Conv2d(self.channels, 64, self.kernal, stride=2, padding=1, bias=True), # B,  64, 16, 16
             # nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(64, 128, 4, stride=2, padding=1, bias=True),
+            nn.Conv2d(64, 128, self.kernal, stride=2, padding=1, bias=True),  #  B,  128, 8, 8
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(128, 256, 4, stride=2, padding=1, bias=True),
+            nn.Conv2d(128, 256, self.kernal, stride=2, padding=1, bias=True),  #  B,  256, 4, 4
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(256, 512, 4, stride=2, padding=1, bias=True),
+            nn.Conv2d(256, 512, self.kernal, stride=2, padding=1, bias=True),  #  B,  512, 2, 2
             nn.BatchNorm2d(512),
             nn.LeakyReLU(0.2, inplace=True),
             

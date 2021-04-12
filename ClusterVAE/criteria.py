@@ -96,7 +96,7 @@ def main():
 
     # Initialize generator and discriminator
     if dataset_name == 'cifar10':
-        cifar_big_arch = False
+        cifar_big_arch = True
         if cifar_big_arch:
             generator = CIFAR_Decoder_CNN(latent_dim, x_shape).to(device)
             encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag).to(device)

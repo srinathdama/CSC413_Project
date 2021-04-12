@@ -46,9 +46,10 @@ def main():
     parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
     parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
-    parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=10, type=int, help="latent dimension")
+    parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=50, type=int, help="latent dimension")
     parser.add_argument("-v", "--beta_vae", dest="beta_vae", default=1, type=int, help="beta vae")
     parser.add_argument("-l", "--lr", dest="lr", default=1e-4, type=float, help="learning rate")
+    parser.add_argument("--sigma_scale", dest="sigma_scale", default=1, type=float, help="sigma_scale")
     parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("-k", "-–num_workers", dest="num_workers", default=4, type=int, help="Number of dataset workers")
@@ -68,6 +69,7 @@ def main():
     print_time = args.print_time
     beta_vae   = args.beta_vae
     cifar_big_arch = args.cifar_big_arch
+    sigma_scale = args.sigma_scale
 
     # Training details
     n_epochs = args.n_epochs
@@ -209,7 +211,8 @@ def main():
             if vae_flag:
                 [mu, sigma] = z_img
                 # reparametrization trix 
-                z = mu+torch.randn_like(mu)*sigma
+                # z = mu+sigma_scale*torch.randn_like(mu)*sigma
+                z = mu + torch.normal(mean=torch.zeros_like(mu), std=sigma_scale)*sigma
             else:
                 z = z_img
 
@@ -217,8 +220,9 @@ def main():
             gen_imgs = decoder(z)
 
             if vae_flag:
-                # marginal_likelihood = -0.5*torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
-                marginal_likelihood = -bce_loss(gen_imgs, real_imgs) / (batchsize*channels)
+                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
+                # marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize)
+                # marginal_likelihood = -bce_loss(gen_imgs, real_imgs) / (batchsize*channels)
                 # print(marginal_likelihood2.item(), marginal_likelihood.item())
                 KL_divergence = 0.5 * torch.sum(
                                             torch.pow(mu, 2) +
@@ -229,6 +233,7 @@ def main():
                 loss = -(marginal_likelihood - beta_vae*KL_divergence)      
             else:
                 marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
+                # marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize)
                 loss = -marginal_likelihood
 
             loss.backward(retain_graph=True)
@@ -252,15 +257,17 @@ def main():
         if vae_flag:
             [mu, sigma] = z_img
             # reparametrization trix 
-            z = mu+torch.randn_like(mu)*sigma
+            # z = mu+torch.randn_like(mu)*sigma
+            z = mu + torch.normal(mean=torch.zeros_like(mu), std=sigma_scale)*sigma
         else:
             z = z_img
 
         # Generate a batch of images
         gen_imgs = decoder(z)
         if vae_flag:
-            # marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
-            marginal_likelihood = -bce_loss(gen_imgs, t_imgs) / (test_batch_size*channels)
+            marginal_likelihood = -0.5*torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
+            # marginal_likelihood = -0.5*torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size)
+            # marginal_likelihood = -bce_loss(gen_imgs, t_imgs) / (test_batch_size*channels)
             # print(marginal_likelihood2.item(), marginal_likelihood.item())
             KL_divergence = 0.5 * torch.sum(
                                         torch.pow(mu, 2) +
@@ -271,6 +278,7 @@ def main():
             loss = -(marginal_likelihood - beta_vae*KL_divergence)      
         else:
             marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
+            # marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size)
             loss = -marginal_likelihood
         
         if vae_flag:
@@ -301,6 +309,8 @@ def main():
                                 'weight_decay' : decay,
                                 'latent_dim' : latent_dim,
                                 'cifar_big_arch' : cifar_big_arch,
+                                'sigma_scale' : sigma_scale,
+                                'beta_vae' : beta_vae,
                                 'gen_enc_loss' : ['G+E', ge_l],
                                 'mse_loss' : ['MSE', mse_l],
                                 'kl_loss' : ['KL', kl_l],
@@ -318,6 +328,8 @@ def main():
                             'weight_decay' : decay,
                             'latent_dim' : latent_dim,
                             'cifar_big_arch' : cifar_big_arch,
+                            'sigma_scale' : sigma_scale,
+                            'beta_vae' : beta_vae,
                             'gen_enc_loss' : ['MSE', ge_l],
                             'test_gen_enc_loss' : ['MSE test', test_ge_l],
                             'time' : loop_time
