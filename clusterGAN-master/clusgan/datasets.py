@@ -54,7 +54,7 @@ def get_dataloader(dataset_name='mnist', data_dir='', batch_size=64, train_set=T
         dset("C:\\Users\\BOBLY\\zzz\\cifar-10", train=train_set, download=False,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
-                           #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                           transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
                        ])),
         num_workers=num_workers,
         batch_size=batch_size,
