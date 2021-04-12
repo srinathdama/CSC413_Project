@@ -6,7 +6,6 @@ try:
     import numpy as np
 
     import matplotlib
-    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     import pandas as pd
@@ -28,7 +27,8 @@ try:
     from sklearn.metrics.cluster import normalized_mutual_info_score
 
     from clusgan.definitions import DATASETS_DIR, RUNS_DIR
-    from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
+    from clusgan.models_cifar import Generator_CNN, Encoder_CNN, Discriminator_CNN
+    # from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
     from clusgan.utils import save_model, calc_gradient_penalty, sample_z, cross_entropy
     from clusgan.datasets import get_dataloader, dataset_list
     from clusgan.plots import plot_train_loss
@@ -46,7 +46,6 @@ def main():
     parser.add_argument("-w", "--wass_metric", dest="wass_metric", action='store_true', help="Flag for Wasserstein metric")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("-k", "-–num_workers", dest="num_workers", default=1, type=int, help="Number of dataset workers")
-    parser.add_argument("-betac", "--betac", dest="betac", default=10, type=float, help="Beta_c")
     args = parser.parse_args()
 
     run_name = args.run_name
@@ -57,21 +56,21 @@ def main():
     # Training details
     n_epochs = args.n_epochs
     batch_size = args.batch_size
-    test_batch_size = 5000
-    lr = 1e-4
+    test_batch_size = 2500
+    lr = (batch_size/64)*(1e-4)
     b1 = 0.5
     b2 = 0.9 #99
     decay = 2.5*1e-5
-    n_skip_iter = 1 #5
+    n_skip_iter = 1
 
-    img_size = 28
-    channels = 1
+    img_size = 32 #28
+    channels = 3 #1
    
     # Latent space info
-    latent_dim = 30
+    latent_dim = 50
     n_c = 10
     betan = 10
-    betac = args.betac
+    betac = 10
    
     # Wasserstein metric flag
     # Wasserstein metric flag
@@ -111,6 +110,17 @@ def main():
     generator = Generator_CNN(latent_dim, n_c, x_shape)
     encoder = Encoder_CNN(latent_dim, n_c)
     discriminator = Discriminator_CNN(wass_metric=wass_metric)
+
+    # encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\encoder.pth.tar",
+    #                             map_location=device)  
+    # generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\generator.pth.tar",
+    #                             map_location=device) 
+    # discriminator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\discriminator.pth.tar",
+    #                             map_location=device)
+
+    # generator.load_state_dict(generator_dict)
+    # encoder.load_state_dict(encoder_dict)
+    # discriminator.load_state_dict(discriminator_dict)
     
     if cuda:
         generator.cuda()
@@ -137,8 +147,8 @@ def main():
                       encoder.parameters())
     optimizer_GE = torch.optim.Adam(ge_chain, lr=lr, betas=(b1, b2), weight_decay=decay)
     optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2))
-    #optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
-
+    # optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
+    
     # ----------
     #  Training
     # ----------
@@ -178,7 +188,7 @@ def main():
     
             # Generate a batch of images
             gen_imgs = generator(zn, zc)
-            
+                        
             # Discriminator output from real and generated samples
             D_gen = discriminator(gen_imgs)
             D_real = discriminator(real_imgs)
@@ -225,7 +235,7 @@ def main():
                 fake = Variable(Tensor(gen_imgs.size(0), 1).fill_(0.0), requires_grad=False)
                 real_loss = bce_loss(D_real, valid)
                 fake_loss = bce_loss(D_gen, fake)
-                d_loss = (real_loss + fake_loss) / 2
+                d_loss = (real_loss + fake_loss) / 2 
     
             d_loss.backward()
             optimizer_D.step()
@@ -250,10 +260,6 @@ def main():
         #r_imgs, i_label = real_imgs.data[:n_samp], itruth_label[:n_samp]
         # Encode sample real instances
         e_tzn, e_tzc, e_tzc_logits = encoder(t_imgs)
-        print("NMI:" )
-        print(normalized_mutual_info_score(t_label, torch.argmax(e_tzc, 1).cpu()))
-        print("ARI")
-        print(adjusted_rand_score(t_label, torch.argmax(e_tzc, 1).cpu()))
         # Generate sample instances from encoding
         teg_imgs = generator(e_tzn, e_tzc)
         # Calculate cycle reconstruction loss
@@ -279,42 +285,42 @@ def main():
         c_zc.append(lat_xe_loss.item())
       
         # Save cycled and generated examples!
-        r_imgs, i_label = real_imgs.data[:n_samp], itruth_label[:n_samp]
-        e_zn, e_zc, e_zc_logits = encoder(r_imgs)
-        reg_imgs = generator(e_zn, e_zc)
-        # print(i_label)
-        # print(torch.argmax(e_zc, 1))
-        save_image(r_imgs.data[:n_samp],
-                   '%s/real_%06i.png' %(imgs_dir, epoch), 
-                   nrow=n_sqrt_samp, normalize=True)
-        save_image(reg_imgs.data[:n_samp],
-                   '%s/reg_%06i.png' %(imgs_dir, epoch), 
-                   nrow=n_sqrt_samp, normalize=True)
-        save_image(gen_imgs_samp.data[:n_samp],
-                   '%s/gen_%06i.png' %(imgs_dir, epoch), 
-                   nrow=n_sqrt_samp, normalize=True)
+        # r_imgs, i_label = real_imgs.data[:n_samp], itruth_label[:n_samp]
+        # e_zn, e_zc, e_zc_logits = encoder(r_imgs)
+        # reg_imgs = generator(e_zn, e_zc)
+        # # print(i_label)
+        # # print(torch.argmax(e_zc, 1))
+        # save_image(r_imgs.data[:n_samp],
+        #            '%s/real_%06i.png' %(imgs_dir, epoch), 
+        #            nrow=n_sqrt_samp, normalize=True)
+        # save_image(reg_imgs.data[:n_samp],
+        #            '%s/reg_%06i.png' %(imgs_dir, epoch), 
+        #            nrow=n_sqrt_samp, normalize=True)
+        # save_image(gen_imgs_samp.data[:n_samp],
+        #            '%s/gen_%06i.png' %(imgs_dir, epoch), 
+        #            nrow=n_sqrt_samp, normalize=True)
         
         ## Generate samples for specified classes
-        stack_imgs = []
-        for idx in range(n_c):
-            # Sample specific class
-            zn_samp, zc_samp, zc_samp_idx = sample_z(shape=n_c,
-                                                     latent_dim=latent_dim,
-                                                     n_c=n_c,
-                                                     fix_class=idx)
+        # stack_imgs = []
+        # for idx in range(n_c):
+        #     # Sample specific class
+        #     zn_samp, zc_samp, zc_samp_idx = sample_z(shape=n_c,
+        #                                              latent_dim=latent_dim,
+        #                                              n_c=n_c,
+        #                                              fix_class=idx)
 
-            # Generate sample instances
-            gen_imgs_samp = generator(zn_samp, zc_samp)
+        #     # Generate sample instances
+        #     gen_imgs_samp = generator(zn_samp, zc_samp)
 
-            if (len(stack_imgs) == 0):
-                stack_imgs = gen_imgs_samp
-            else:
-                stack_imgs = torch.cat((stack_imgs, gen_imgs_samp), 0)
+        #     if (len(stack_imgs) == 0):
+        #         stack_imgs = gen_imgs_samp
+        #     else:
+        #         stack_imgs = torch.cat((stack_imgs, gen_imgs_samp), 0)
 
-        # Save class-specified generated examples!
-        save_image(stack_imgs,
-                   '%s/gen_classes_%06i.png' %(imgs_dir, epoch), 
-                   nrow=n_c, normalize=True)
+        # # Save class-specified generated examples!
+        # save_image(stack_imgs,
+        #            '%s/gen_classes_%06i.png' %(imgs_dir, epoch), 
+        #            nrow=n_c, normalize=True)
      
 
         print ("[Epoch %d/%d] \n"\
@@ -328,6 +334,14 @@ def main():
                                                              lat_mse_loss.item(), 
                                                              lat_xe_loss.item())
              )
+
+        if epoch % 50 == 0:
+            model_list_1 = [discriminator, encoder, generator]
+            for m in model_list_1:
+                filename = f"{epoch}{m.name}.pth.tar"
+                outfile = os.path.join(models_dir, filename)
+                torch.save(m.state_dict(), outfile)
+            print("\nmodel saved\n")
 
     
 
