@@ -51,10 +51,10 @@ def get_dataloader(dataset_name='mnist', data_dir='', batch_size=64, train_set=T
     dset = get_dataset(dataset_name)
 
     dataloader = torch.utils.data.DataLoader(
-        dset("C:\\Users\\BOBLY\\zzz\\cifar-10", train=train_set, download=False,
+        dset(data_dir, train=train_set, download=True,
                        transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
+                           transforms.ToTensor()
+                        #    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
                        ])),
         num_workers=num_workers,
         batch_size=batch_size,

@@ -196,10 +196,8 @@ class CIFAR_SEncoder_CNN(nn.Module):
         self.lshape = (self.iels,)
         self.verbose = verbose
         self.vae_flag = VAE
-        if self.vae_flag:
-            self.out_dim = 2*latent_dim
-        else:
-            self.out_dim = latent_dim
+        
+        self.out_dim = latent_dim
         
         # self.model = nn.Sequential(
         #     # Convolutional layers
@@ -223,13 +221,16 @@ class CIFAR_SEncoder_CNN(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(32, 64, 4, 2, 1),          # B,  64, 8, 8
             nn.ReLU(True),
-            nn.Conv2d(64, 64, 4, 2, 1),          # B,  64, 4,  4
+            nn.Conv2d(64, 128, 4, 2, 1),          # B,  64, 4,  4
             nn.ReLU(True),
-            nn.Conv2d(64, 256, 4, 1),            # B, 256,  1,  1
+            nn.Conv2d(128, 256, 4, 1),            # B, 256,  1,  1
             nn.ReLU(True),
             Reshape((256*1*1,)),                 # B, 256
-            nn.Linear(256, self.out_dim)         # B, z_dim*2)
+            nn.Linear(256, 2000)         # B, z_dim*2)
             )             
+        
+        self.mu_l=nn.Linear(2000, self.out_dim)
+        self.log_sigma2_l=nn.Linear(2000, self.out_dim)
 
         initialize_weights(self)
         
@@ -297,9 +298,9 @@ class CIFAR_SDecoder_CNN(nn.Module):
             nn.Linear(self.latent_dim, 256),               # B, 256
             Reshape((256, 1, 1)),               # B, 256,  1,  1
             nn.ReLU(True),
-            nn.ConvTranspose2d(256, 64, 4),      # B,  64,  4,  4
+            nn.ConvTranspose2d(256, 128, 4),      # B,  64,  4,  4
             nn.ReLU(True),
-            nn.ConvTranspose2d(64, 64, 4, 2, 1), # B,  64,  8,  8
+            nn.ConvTranspose2d(128, 64, 4, 2, 1), # B,  64,  8,  8
             nn.ReLU(True),
             nn.ConvTranspose2d(64, 32, 4, 2, 1), # B,  32, 16, 16
             nn.ReLU(True),

@@ -175,7 +175,7 @@ def main():
     testdata = get_dataloader(dataset_name=dataset_name, data_dir=data_dir, batch_size=test_batch_size, train_set=False)
     test_imgs, test_labels = next(iter(testdata))
     test_imgs = Variable(test_imgs.type(Tensor))
-   
+
     ge_chain = ichain(decoder.parameters(),
                       encoder.parameters())
     optimizer_GE = torch.optim.Adam(ge_chain, lr=lr, betas=(b1, b2), weight_decay=decay)
