@@ -46,13 +46,16 @@ def main():
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=5000, type=int, help="Batch size")
     parser.add_argument('--ae', dest='vae_flag', action='store_false')
     parser.add_argument('--c', dest='classifier_flag', action='store_false')
+    parser.add_argument('--cifar_big_arch', dest='cifar_big_arch', action='store_true')
     parser.set_defaults(vae_flag=True)
-    parser.set_defaults(classifier_flag=True)
+    parser.set_defaults(classifier_flag=False)
+    parser.set_defaults(cifar_big_arch=False)
     args = parser.parse_args()
 
     batch_size = args.batch_size
     vae_flag  = args.vae_flag
     classifier_flag = args.classifier_flag
+    cifar_big_arch = args.cifar_big_arch
     
     # Directory structure for this run
     run_dir = args.run_dir.rstrip("/")
@@ -100,7 +103,7 @@ def main():
 
     # Initialize generator and discriminator
     if dataset_name == 'cifar10':
-        cifar_big_arch = True
+        # cifar_big_arch = True
         if cifar_big_arch:
             generator = CIFAR_Decoder_CNN(latent_dim, x_shape).to(device)
             encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag).to(device)
@@ -150,6 +153,17 @@ def main():
     shape_constant = 1000
     correct = 0
     labels = {}
+
+    def predict(self,x):
+        z_mu, z_sigma2_log = encoder(x)
+        z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
+        pi = self.pi_
+        log_sigma2_c = self.log_sigma2_c
+        mu_c = self.mu_c
+        yita_c = torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))
+
+        yita=yita_c.detach().cpu().numpy()
+        return np.argmax(yita,axis=1)
 
 
     ## train GMM model 

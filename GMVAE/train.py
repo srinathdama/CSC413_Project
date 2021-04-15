@@ -31,7 +31,8 @@ try:
     from VAE.definitions import DATASETS_DIR, RUNS_DIR
     from VAE.models import Decoder_CNN, Encoder_CNN
     from VAE.CIFAR_models import CIFAR_Decoder_CNN, CIFAR_Encoder_CNN, CIFAR_SDecoder_CNN, CIFAR_SEncoder_CNN
-    from VAE.utils import save_model, sample_z, cross_entropy, run_clustering
+    from VAE.VaDE_model import VaDE
+    from VAE.utils import save_model, sample_z, cross_entropy, run_clustering, run_vade_metrics
     from VAE.datasets import get_dataloader, dataset_list
     from VAE.plots import plot_train_loss
 except ImportError as e:
@@ -40,7 +41,7 @@ except ImportError as e:
 
 
 def lr_decay(global_step, init_learning_rate = 2e-4,
-            min_learning_rate = 5e-5, decay_rate = 0.99):
+            min_learning_rate = 1e-4, decay_rate = 0.995):
     lr = ((init_learning_rate - min_learning_rate) *
           pow(decay_rate, global_step) +
           min_learning_rate)
@@ -81,6 +82,7 @@ def main():
     cifar_big_arch = args.cifar_big_arch
     sigma_scale = args.sigma_scale
     lr_decay_f  = args.lr_decay_f
+    
 
     # Training details
     n_epochs = args.n_epochs
@@ -108,7 +110,11 @@ def main():
     betan = 10
     nClusters = 10
     # betac = args.betac
-   
+
+    ## TO DO
+    # pi_, mu_c, log_sigma2_c = 0,0,0
+    npzfile_path = '/home/srinath/Project/CSC413_Project/GMVAE/runs/cifar10/400epoch_z50_vae_vanilla_bs128_BS_sensitivity/cifar10_GMM_10_gmm_weights.npz'
+       
     # wass_metric = args.wass_metric
     # mtype = 'van'
     # if (wass_metric):
@@ -145,21 +151,21 @@ def main():
     xe_loss = torch.nn.CrossEntropyLoss()
     mse_loss = torch.nn.MSELoss()
     
-    # Initialize generator and discriminator
-    if dataset_name == 'cifar10':
-        if cifar_big_arch:
-            decoder = CIFAR_Decoder_CNN(latent_dim, x_shape)
-            encoder = CIFAR_Encoder_CNN(latent_dim, vae_flag)
-        else:
-            decoder = CIFAR_SDecoder_CNN(latent_dim, x_shape)
-            encoder = CIFAR_SEncoder_CNN(latent_dim, vae_flag)
-    else:
-        decoder = Decoder_CNN(latent_dim, x_shape)
-        encoder = Encoder_CNN(latent_dim, vae_flag)
+    arg_dict = {'x_shape': x_shape, 
+                'nClusters': nClusters,
+                'run_dir': run_dir,
+                'models_dir': models_dir,
+                'npzfile_path': npzfile_path,
+                'cuda': cuda}
     
+    vade = VaDE(args, arg_dict)
+
+    # for name, param in vade.named_parameters():
+    #     if param.requires_grad:
+    #         print(name)
+
     if cuda:
-        decoder.cuda()
-        encoder.cuda()
+        vade.cuda()
         bce_loss.cuda()
         xe_loss.cuda()
         mse_loss.cuda()
@@ -177,9 +183,8 @@ def main():
     test_imgs, test_labels = next(iter(testdata))
     test_imgs = Variable(test_imgs.type(Tensor))
 
-    ge_chain = ichain(decoder.parameters(),
-                      encoder.parameters())
-    optimizer_GE = torch.optim.Adam(ge_chain, lr=lr, betas=(b1, b2), weight_decay=decay)
+
+    optimizer_GE = torch.optim.Adam(vade.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
     #optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=lr, betas=(b1, b2), weight_decay=decay)
     # https://discuss.pytorch.org/t/learning-rate-decay-during-training/74017
     if lr_decay_f:
@@ -196,72 +201,12 @@ def main():
     test_mse_l = []
     test_kl_l =[]
     # bse_loss = nn.BCELoss(reduction='sum')
-
-    pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True).cuda()
-    mu_c=nn.Parameter(torch.FloatTensor(nClusters, latent_dim).fill_(0),requires_grad=True).cuda()
-    log_sigma2_c=nn.Parameter(torch.FloatTensor(nClusters, latent_dim).fill_(0),requires_grad=True).cuda()
     
     # print_time = True
-    def ELBO_Loss(x, pi_, mu_c, log_sigma2_c,  L=1):
-        det=1e-10
-
-        L_rec=0
-
-        z_mu, z_sigma2_log = encoder(x)
-        for l in range(L):
-
-            z=torch.randn_like(z_mu)*torch.exp(z_sigma2_log/2)+z_mu
-
-            x_pro= decoder(z)
-
-            L_rec+= torch.pow(x - x_pro, 2).sum() / x.shape[0]
-
-        L_rec/=L
-
-        Loss=L_rec
-
-        pi= pi_
-        log_sigma2_c= log_sigma2_c
-        mu_c= mu_c
-
-        z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
-        yita_c=torch.exp(torch.log(pi.unsqueeze(0))+ gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
-
-        yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
-
-        Loss+=0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
-                                                torch.exp(z_sigma2_log.unsqueeze(1)-log_sigma2_c.unsqueeze(0))+
-                                                (z_mu.unsqueeze(1)-mu_c.unsqueeze(0)).pow(2)/torch.exp(log_sigma2_c.unsqueeze(0)),2),1))
-
-        Loss-=torch.mean(torch.sum(yita_c*torch.log(pi.unsqueeze(0)/(yita_c)),1))+0.5*torch.mean(torch.sum(1+z_sigma2_log,1))
-
-
-        return Loss, L_rec
-
-
-    def gaussian_pdfs_log(x,mus,log_sigma2s):
-        G=[]
-        for c in range(nClusters):
-            G.append(gaussian_pdf_log(x,mus[c:c+1,:],log_sigma2s[c:c+1,:]).view(-1,1))
-        return torch.cat(G,1)
-
-
-
-    def gaussian_pdf_log(x,mu,log_sigma2):
-        return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
     
     ## load GMM weights 
+    vade.pre_train(dataloader, 50)
 
-    ## TO DO
-    # pi_, mu_c, log_sigma2_c = 0,0,0
-    npzfile = np.load('/home/srinath/Project/CSC413_Project/GMVAE/runs/cifar10/400epoch_z50_vae_vanilla_bs128_BS_sensitivity/cifar10_GMM_10_gmm_weights.npz')
-    weights_np  = npzfile['weights']
-    means_np  = npzfile['means']
-    covariances_np  = npzfile['covariances']
-
-    pi_.data = torch.from_numpy(weights_np).cuda().float()
-    mu_c.data = torch.from_numpy(means_np).cuda().float()
-    log_sigma2_c.data = torch.log(torch.from_numpy(covariances_np).cuda().float())
 
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -272,11 +217,9 @@ def main():
            
             batchsize = imgs.shape[0]
             # Ensure generator/encoder are trainable
-            decoder.train()
-            encoder.train()
+            vade.train()
             # Zero gradients for models
-            decoder.zero_grad()
-            encoder.zero_grad()
+            vade.zero_grad()
             
             # Configure input
             real_imgs = Variable(imgs.type(Tensor))
@@ -287,7 +230,8 @@ def main():
             
             optimizer_GE.zero_grad()
             
-            loss, recon_error = ELBO_Loss(real_imgs, pi_, mu_c, log_sigma2_c)
+            loss, recon_error = vade.ELBO_Loss(real_imgs)
+
 
             loss.backward(retain_graph=True)
             optimizer_GE.step()
@@ -307,11 +251,10 @@ def main():
             ge_l.append(loss.item())
 
         # Generator in eval mode
-        decoder.eval()
-        encoder.eval()
+        vade.eval()
         t_imgs, t_label = test_imgs.data, test_labels
 
-        loss, recon_error = ELBO_Loss(t_imgs, pi_, mu_c, log_sigma2_c)
+        loss, recon_error = vade.ELBO_Loss(t_imgs)
         
         
         if vae_flag:
@@ -323,6 +266,8 @@ def main():
         if print_time:
             delta_time_epoch = datetime.now().timestamp() - time_epoch0
             print('epoch :', epoch, ', time :', delta_time_epoch)
+            print('train loss: ', ge_l[-1], ' recon loss: ', mse_l[-1])
+            print('test loss: ', test_ge_l[-1], ' recon loss: ', test_ge_l[-1])
    
     
     print('done training!')
@@ -389,8 +334,53 @@ def main():
     #                 )
 
     # Save current state of trained models
-    model_list = [encoder, decoder]
+    model_list = [vade]
     save_model(models=model_list, out_dir=models_dir)
+
+
+    ### accuracy
+    train_pred_label = []
+    train_label = []
+    test_pred_label = []
+    test_label = []
+    
+    batch_size = 5000
+    traindataloader =  get_dataloader(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                batch_size=batch_size,
+                                train_set=True)
+
+    for i, (imgs, itruth_label) in enumerate(traindataloader):
+        train_imgs = Variable(imgs.type(Tensor))
+        with torch.no_grad():
+            vade_label  = vade.predict(train_imgs)
+        train_pred_label.append(vade_label)
+        train_label.append(itruth_label)
+    train_pred_label = np.concatenate(train_pred_label, axis=0)
+    train_label = np.concatenate(train_label, axis=0)
+    train_data = [train_pred_label, train_label]
+
+    testdataloader =  get_dataloader(dataset_name=dataset_name,
+                                data_dir=data_dir,
+                                batch_size=batch_size,
+                                train_set=False)
+
+    for i, (imgs, itruth_label) in enumerate(testdataloader):
+        train_imgs = Variable(imgs.type(Tensor))
+        with torch.no_grad():
+            vade_label  = vade.predict(train_imgs)
+        test_pred_label.append(vade_label)
+        test_label.append(itruth_label)
+    test_pred_label = np.concatenate(test_pred_label, axis=0)
+    test_label = np.concatenate(test_label, axis=0)
+    test_data = [test_pred_label, test_label]
+
+    noof_clusters = nClusters
+    target_names  = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    save_path     = run_dir
+    run_vade_metrics(noof_clusters, target_names, save_path, dataset_name, train_data, test_data)
+
+    
 
 
 

@@ -265,7 +265,49 @@ def run_clustering(method, noof_clusters, target_names, save_path, data_set, tra
         # means_np  = npzfile['means']
         # covariances_np  = npzfile['covariances']
 
-        
-        
+def run_vade_metrics(noof_clusters, target_names, save_path, data_set, train_data, test_data):
+
+    noof_clusters = noof_clusters
+    target_names  = target_names
+    data_set      = data_set
+
+    # load train dataset
+    [clusters, labels_tr] = train_data
+
+    labels    = map_cluster_to_labels(clusters, labels_tr, noof_clusters)
+    train_acc = accuracy_score(labels_tr, labels)
+    train_ARI = adjusted_rand_score(labels_tr, labels)
+    train_NMI = normalized_mutual_info_score(labels_tr, labels)
+    print('train_acc :', train_acc)
+    plot_confusion_matrix(labels_tr, labels, target_names, 
+                    os.path.join(save_path, 
+                    F'{data_set}_VaDE_'+str(noof_clusters)+'_train_confusion_matrix.png'))
+
+
+    # accuracy on test dataset
+    # load test dataset
+    [clusters, labels_te] = test_data
+
+    labels    = map_cluster_to_labels(clusters, labels_te, noof_clusters)
+    test_acc  = accuracy_score(labels_te, labels)
+    test_ARI = adjusted_rand_score(labels_te, labels)
+    test_NMI = normalized_mutual_info_score(labels_te, labels)
+    print('test_acc :', test_acc)
+    plot_confusion_matrix(labels_te, labels, target_names, 
+                    os.path.join(save_path, 
+                    F'{data_set}_VaDE_'+str(noof_clusters)+'_test_confusion_matrix.png'))
+
+    mnist_results = pd.DataFrame({
+                                        'noof_clusters':[noof_clusters],
+                                        'train accuracy':[train_acc],
+                                        'test accuracy':[test_acc],
+                                        'train ARI':[train_ARI],
+                                        'test ARI':[test_ARI],
+                                        'train NMI':[train_NMI],
+                                        'test NMI':[test_NMI],
+                                        })
+
+    mnist_results.to_csv(os.path.join(save_path,
+                    F'{data_set}_VaDE_'+str(noof_clusters)+'_results.csv'))        
 
     return None

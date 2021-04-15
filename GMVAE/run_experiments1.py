@@ -52,5 +52,5 @@ batch_sizes = [64, 128]
 # lrs         = 1e-4* np.asarray(batch_sizes, dtype= float)/batch_sizes[0]
 # latent_dims = [5]
 for batch_size in batch_sizes:
-    subprocess.run('python train.py -n 300 -r BigNet_batch_sensitivity -d 50 -b '+str(batch_size) + ' -s cifar10 --lr_decay_f --cifar_big_arch --print_time', shell=True)
+    subprocess.run('python train.py -n 600 -r BigNet_batch_sensitivity_new -d 50 -b '+str(batch_size) + ' -s cifar10 --lr_decay_f --cifar_big_arch --print_time', shell=True)
 
