@@ -106,6 +106,7 @@ def main():
     # Latent space info
     latent_dim = args.latent_dim
     betan = 10
+    nClusters = 10
     # betac = args.betac
    
     # wass_metric = args.wass_metric
@@ -197,7 +198,55 @@ def main():
     # bse_loss = nn.BCELoss(reduction='sum')
     
     # print_time = True
+    def ELBO_Loss(x, L=1):
+        det=1e-10
+
+        L_rec=0
+
+        z_mu, z_sigma2_log = self.encoder(x)
+        for l in range(L):
+
+            z=torch.randn_like(z_mu)*torch.exp(z_sigma2_log/2)+z_mu
+
+            x_pro=self.decoder(z)
+
+            L_rec+=F.binary_cross_entropy(x_pro,x)
+
+        L_rec/=L
+
+        Loss=L_rec*x.size(1)
+
+        pi= 1/nClusters
+        log_sigma2_c=self.log_sigma2_c
+        mu_c=self.mu_c
+
+        z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
+        yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
+
+        yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
+
+        Loss+=0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
+                                                torch.exp(z_sigma2_log.unsqueeze(1)-log_sigma2_c.unsqueeze(0))+
+                                                (z_mu.unsqueeze(1)-mu_c.unsqueeze(0)).pow(2)/torch.exp(log_sigma2_c.unsqueeze(0)),2),1))
+
+        Loss-=torch.mean(torch.sum(yita_c*torch.log(pi.unsqueeze(0)/(yita_c)),1))+0.5*torch.mean(torch.sum(1+z_sigma2_log,1))
+
+
+        return Loss
+
+
+    def gaussian_pdfs_log(x,mus,log_sigma2s):
+        G=[]
+        for c in range(nClusters):
+            G.append(gaussian_pdf_log(x,mus[c:c+1,:],log_sigma2s[c:c+1,:]).view(-1,1))
+        return torch.cat(G,1)
+
+
+
+    def gaussian_pdf_log(x,mu,log_sigma2):
+        return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
     
+
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
     for epoch in range(n_epochs):
@@ -224,8 +273,9 @@ def main():
 
 
             # Encode the generated images
-            z_img = encoder(real_imgs)
+            [mu, sigma] = encoder(real_imgs)
             
+
             if vae_flag:
                 [mu, sigma] = z_img
                 # reparametrization trix 

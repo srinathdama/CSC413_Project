@@ -226,7 +226,8 @@ class CIFAR_SEncoder_CNN(nn.Module):
             nn.Conv2d(128, 256, 4, 1),            # B, 256,  1,  1
             nn.ReLU(True),
             Reshape((256*1*1,)),                 # B, 256
-            nn.Linear(256, 2000)         # B, z_dim*2)
+            nn.Linear(256, 2000),         # B, z_dim*2)
+            nn.ReLU(True)
             )             
         
         self.mu_l=nn.Linear(2000, self.out_dim)
@@ -243,16 +244,13 @@ class CIFAR_SEncoder_CNN(nn.Module):
         # Reshape for output
         z = z_img.view(z_img.shape[0], -1)
 
-        if self.vae_flag:
-            # Separate mu and sigma
-            mu = z[:, 0:self.latent_dim]
+        # Separate mu and sigma
+        mu = self.mu_l(z)
 
-            # ensure sigma is postive 
-            sigma = 1e-6 + F.softplus(z[:, self.latent_dim:])
-            
-            return [mu, sigma]
-        else:
-            return z
+        # ensure sigma is postive 
+        sigma = self.log_sigma2_l(z)
+        
+        return [mu, sigma]
         
 class CIFAR_SDecoder_CNN(nn.Module):
     """
@@ -295,7 +293,9 @@ class CIFAR_SDecoder_CNN(nn.Module):
         #     nn.Sigmoid()
         # )
         self.model = nn.Sequential(
-            nn.Linear(self.latent_dim, 256),               # B, 256
+            nn.Linear(self.latent_dim, 2000),               # B, 256
+            nn.ReLU(True),
+            nn.Linear(2000, 256),               # B, 256
             Reshape((256, 1, 1)),               # B, 256,  1,  1
             nn.ReLU(True),
             nn.ConvTranspose2d(256, 128, 4),      # B,  64,  4,  4
