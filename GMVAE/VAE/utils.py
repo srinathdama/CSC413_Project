@@ -189,7 +189,8 @@ def run_clustering(method, noof_clusters, target_names, save_path, data_set, tra
     if method   == 'Kmeans':
         model   = KMeans(n_clusters=noof_clusters, random_state=0)
     elif method == 'GMM':
-        model   = GaussianMixture(n_components=noof_clusters, covariance_type='full', random_state=42)
+        # model   = GaussianMixture(n_components=noof_clusters, covariance_type='full', random_state=42)
+        model   = GaussianMixture(n_components=noof_clusters, covariance_type='diag', random_state=42)
         
     clusters = model.fit_predict(images_tr.reshape(images_tr.shape[0], -1))
 
@@ -235,5 +236,36 @@ def run_clustering(method, noof_clusters, target_names, save_path, data_set, tra
                                         })
     mnist_results.to_csv(os.path.join(save_path,
                     F'{data_set}_{method}_'+str(noof_clusters)+'_results.csv'))
+
+    if method == 'GMM':
+        weights_  =  model.weights_
+        means_    =  model.means_ 
+        covariances_ = model.covariances_
+        np.savez(os.path.join(save_path,
+                    F'{data_set}_{method}_'+str(noof_clusters)+'_gmm_weights')
+                    , weights=weights_, means=means_, covariances=covariances_)
+        gmm_results = pd.DataFrame({
+                                        'weights':weights_.tolist(),
+                                        'means':means_.tolist(),
+                                        'covariances_':covariances_.tolist()
+                                        })
+        gmm_results.to_csv(os.path.join(save_path,
+                    F'{data_set}_{method}_'+str(noof_clusters)+'_gmm_weights.csv'))
+
+        # train_df = pd.read_csv(os.path.join(save_path,
+        #             F'{data_set}_{method}_'+str(noof_clusters)+'_gmm_weights.csv'))
+
+        # weights_  =  train_df[train_df.columns[1]].to_numpy()
+        # means_    =  train_df[train_df.columns[2]].to_numpy()
+        # covariances_ = train_df[train_df.columns[3]].to_numpy()
+
+        # npzfile = np.load(os.path.join(save_path,
+        #             F'{data_set}_{method}_'+str(noof_clusters)+'_gmm_weights.npz'))
+        # weights_np  = npzfile['weights']
+        # means_np  = npzfile['means']
+        # covariances_np  = npzfile['covariances']
+
+        
+        
 
     return None

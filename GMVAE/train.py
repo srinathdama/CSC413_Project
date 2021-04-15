@@ -40,7 +40,7 @@ except ImportError as e:
 
 
 def lr_decay(global_step, init_learning_rate = 2e-4,
-            min_learning_rate = 1e-5, decay_rate = 0.99):
+            min_learning_rate = 5e-5, decay_rate = 0.99):
     lr = ((init_learning_rate - min_learning_rate) *
           pow(decay_rate, global_step) +
           min_learning_rate)
@@ -52,11 +52,11 @@ def main():
     global args
     parser = argparse.ArgumentParser(description="Convolutional NN Training Script")
     parser.add_argument("-r", "--run_name", dest="run_name", default='clusgan', help="Name of training run")
-    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=200, type=int, help="Number of epochs")
+    parser.add_argument("-n", "--n_epochs", dest="n_epochs", default=300, type=int, help="Number of epochs")
     parser.add_argument("-b", "--batch_size", dest="batch_size", default=64, type=int, help="Batch size")
     parser.add_argument("-d", "--latent_dim", dest="latent_dim", default=50, type=int, help="latent dimension")
     parser.add_argument("-v", "--beta_vae", dest="beta_vae", default=1, type=int, help="beta vae")
-    parser.add_argument("-l", "--lr", dest="lr", default=1e-4, type=float, help="learning rate")
+    parser.add_argument("-l", "--lr", dest="lr", default=4e-3, type=float, help="learning rate")
     parser.add_argument("--sigma_scale", dest="sigma_scale", default=1, type=float, help="sigma_scale")
     parser.add_argument("-s", "--dataset_name", dest="dataset_name", default='mnist', choices=dataset_list,  help="Dataset name")
     parser.add_argument("-g", "-–gpu", dest="gpu", default=0, type=int, help="GPU id to use")
@@ -64,9 +64,9 @@ def main():
     parser.add_argument('--lr_decay_f', dest='lr_decay_f', action='store_true')
     parser.add_argument('--ae', dest='vae_flag', action='store_false')
     parser.add_argument('--cifar_big_arch', dest='cifar_big_arch', action='store_true')
-    parser.add_argument('--printtime', dest='print_time', action='store_true')
+    parser.add_argument('--print_time', dest='print_time', action='store_true')
     parser.set_defaults(vae_flag=True)
-    parser.set_defaults(lr_decay=True)
+    parser.set_defaults(lr_decay_f=False)
     parser.set_defaults(cifar_big_arch=False)
     parser.set_defaults(print_time=False)
     args = parser.parse_args()
@@ -196,32 +196,36 @@ def main():
     test_mse_l = []
     test_kl_l =[]
     # bse_loss = nn.BCELoss(reduction='sum')
+
+    pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True).cuda()
+    mu_c=nn.Parameter(torch.FloatTensor(nClusters, latent_dim).fill_(0),requires_grad=True).cuda()
+    log_sigma2_c=nn.Parameter(torch.FloatTensor(nClusters, latent_dim).fill_(0),requires_grad=True).cuda()
     
     # print_time = True
-    def ELBO_Loss(x, L=1):
+    def ELBO_Loss(x, pi_, mu_c, log_sigma2_c,  L=1):
         det=1e-10
 
         L_rec=0
 
-        z_mu, z_sigma2_log = self.encoder(x)
+        z_mu, z_sigma2_log = encoder(x)
         for l in range(L):
 
             z=torch.randn_like(z_mu)*torch.exp(z_sigma2_log/2)+z_mu
 
-            x_pro=self.decoder(z)
+            x_pro= decoder(z)
 
-            L_rec+=F.binary_cross_entropy(x_pro,x)
+            L_rec+= torch.pow(x - x_pro, 2).sum() / x.shape[0]
 
         L_rec/=L
 
-        Loss=L_rec*x.size(1)
+        Loss=L_rec
 
-        pi= 1/nClusters
-        log_sigma2_c=self.log_sigma2_c
-        mu_c=self.mu_c
+        pi= pi_
+        log_sigma2_c= log_sigma2_c
+        mu_c= mu_c
 
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
-        yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
+        yita_c=torch.exp(torch.log(pi.unsqueeze(0))+ gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
 
         yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
 
@@ -232,7 +236,7 @@ def main():
         Loss-=torch.mean(torch.sum(yita_c*torch.log(pi.unsqueeze(0)/(yita_c)),1))+0.5*torch.mean(torch.sum(1+z_sigma2_log,1))
 
 
-        return Loss
+        return Loss, L_rec
 
 
     def gaussian_pdfs_log(x,mus,log_sigma2s):
@@ -246,6 +250,18 @@ def main():
     def gaussian_pdf_log(x,mu,log_sigma2):
         return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
     
+    ## load GMM weights 
+
+    ## TO DO
+    # pi_, mu_c, log_sigma2_c = 0,0,0
+    npzfile = np.load('/home/srinath/Project/CSC413_Project/GMVAE/runs/cifar10/400epoch_z50_vae_vanilla_bs128_BS_sensitivity/cifar10_GMM_10_gmm_weights.npz')
+    weights_np  = npzfile['weights']
+    means_np  = npzfile['means']
+    covariances_np  = npzfile['covariances']
+
+    pi_.data = torch.from_numpy(weights_np).cuda().float()
+    mu_c.data = torch.from_numpy(means_np).cuda().float()
+    log_sigma2_c.data = torch.log(torch.from_numpy(covariances_np).cuda().float())
 
     # Training loop 
     print('\nBegin training session with %i epochs...\n'%(n_epochs))
@@ -270,42 +286,12 @@ def main():
             # ---------------------------
             
             optimizer_GE.zero_grad()
-
-
-            # Encode the generated images
-            [mu, sigma] = encoder(real_imgs)
             
-
-            if vae_flag:
-                [mu, sigma] = z_img
-                # reparametrization trix 
-                # z = mu+sigma_scale*torch.randn_like(mu)*sigma
-                z = mu + torch.normal(mean=torch.zeros_like(mu), std=sigma_scale)*sigma
-            else:
-                z = z_img
-
-            # Generate a batch of images
-            gen_imgs = decoder(z)
-
-            if vae_flag:
-                # marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
-                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize)
-                # marginal_likelihood = -bce_loss(gen_imgs, real_imgs) / (batchsize*channels)
-                # print(marginal_likelihood2.item(), marginal_likelihood.item())
-                KL_divergence = 0.5 * torch.sum(
-                                            torch.pow(mu, 2) +
-                                            torch.pow(sigma, 2) -
-                                            torch.log(1e-8 + torch.pow(sigma, 2)) - 1
-                                        ).sum() / batchsize
-                # calculte loss
-                loss = -(marginal_likelihood - beta_vae*KL_divergence)      
-            else:
-                # marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize*channels)
-                marginal_likelihood = -torch.pow(real_imgs - gen_imgs, 2).sum() / (batchsize)
-                loss = -marginal_likelihood
+            loss, recon_error = ELBO_Loss(real_imgs, pi_, mu_c, log_sigma2_c)
 
             loss.backward(retain_graph=True)
             optimizer_GE.step()
+
         if lr_decay_f:
             scheduler.step()
             # print(epoch, optimizer_GE.param_groups[0]['lr'], lr_decay(epoch, lr0))
@@ -313,10 +299,10 @@ def main():
             
 
         # Save training losses
+        # print(pi_)
         if vae_flag:
             ge_l.append(loss.item())
-            mse_l.append(-marginal_likelihood.item())
-            kl_l.append(KL_divergence.item())
+            mse_l.append(recon_error.item())
         else:
             ge_l.append(loss.item())
 
@@ -324,40 +310,13 @@ def main():
         decoder.eval()
         encoder.eval()
         t_imgs, t_label = test_imgs.data, test_labels
-        # Encode the generated images
-        z_img = encoder(t_imgs)
-        
-        if vae_flag:
-            [mu, sigma] = z_img
-            # reparametrization trix 
-            # z = mu+torch.randn_like(mu)*sigma
-            z = mu + torch.normal(mean=torch.zeros_like(mu), std=sigma_scale)*sigma
-        else:
-            z = z_img
 
-        # Generate a batch of images
-        gen_imgs = decoder(z)
-        if vae_flag:
-            # marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
-            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size)
-            # marginal_likelihood = -bce_loss(gen_imgs, t_imgs) / (test_batch_size*channels)
-            # print(marginal_likelihood2.item(), marginal_likelihood.item())
-            KL_divergence = 0.5 * torch.sum(
-                                        torch.pow(mu, 2) +
-                                        torch.pow(sigma, 2) -
-                                        torch.log(1e-8 + torch.pow(sigma, 2)) - 1
-                                    ).sum() / test_batch_size
-            # calculte loss
-            loss = -(marginal_likelihood - beta_vae*KL_divergence)      
-        else:
-            # marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size*channels)
-            marginal_likelihood = -torch.pow(t_imgs - gen_imgs, 2).sum() / (test_batch_size)
-            loss = -marginal_likelihood
+        loss, recon_error = ELBO_Loss(t_imgs, pi_, mu_c, log_sigma2_c)
+        
         
         if vae_flag:
             test_ge_l.append(loss.item())
-            test_mse_l.append(-marginal_likelihood.item())
-            test_kl_l.append(KL_divergence.item())
+            test_mse_l.append(recon_error.item())
         else:
             test_ge_l.append(loss.item())
 
@@ -387,10 +346,8 @@ def main():
                                 'beta_vae' : beta_vae,
                                 'gen_enc_loss' : ['G+E', ge_l],
                                 'mse_loss' : ['MSE', mse_l],
-                                'kl_loss' : ['KL', kl_l],
                                 'test_gen_enc_loss' : ['G+E test', test_ge_l],
                                 'test_mse_loss' : ['MSE test', test_mse_l],
-                                'test_kl_loss' : ['KL test', test_kl_l],
                                 'time' : loop_time
                                 })
     else:
@@ -416,8 +373,8 @@ def main():
     # Plot some training results
     if vae_flag:
         plot_train_loss(df=train_df,
-                        arr_list=['gen_enc_loss', 'mse_loss', 'kl_loss',
-                         'test_gen_enc_loss', 'test_mse_loss', 'test_kl_loss'],
+                        arr_list=['gen_enc_loss', 'mse_loss',
+                         'test_gen_enc_loss', 'test_mse_loss'],
                         figname='%s/training_model_losses.png'%(run_dir)
                         )
     else:

@@ -41,9 +41,16 @@ import numpy as np
 #     subprocess.run('python train.py -n 300 -r SmallNet1_gaussian_beta_sensitivity_'+str(beta)+' -b 128 -d 30 -v '+str(beta) + ' -l ' + str(2e-4) + ' -s cifar10 ', shell=True)
 
 
-betas = [1, 2, 3, 4, 5]
-# latent_dims = [5]
-for beta in betas:
-    subprocess.run('python train.py -n 300 -r cifar_k3_gaussian_beta_sensitivity_'+str(beta)+' -b 128 -d 50 -v '+str(beta) + ' -l ' + str(2e-4) + ' -s cifar10  --cifar_big_arch ', shell=True)
+# betas = [1, 2, 3, 4, 5]
+# # latent_dims = [5]
+# for beta in betas:
+#     subprocess.run('python train.py -n 300 -r cifar_k3_gaussian_beta_sensitivity_'+str(beta)+' -b 128 -d 50 -v '+str(beta) + ' -l ' + str(2e-4) + ' -s cifar10  --cifar_big_arch ', shell=True)
 
 # python train.py -n 300 -r cifar_k3_gaussian_data_normalized -b 128 -d 50 -v 1 -l 2e-4 -s cifar10 --cifar_big_arch 
+
+batch_sizes = [64, 128]
+# lrs         = 1e-4* np.asarray(batch_sizes, dtype= float)/batch_sizes[0]
+# latent_dims = [5]
+for batch_size in batch_sizes:
+    subprocess.run('python train.py -n 300 -r BigNet_batch_sensitivity -d 50 -b '+str(batch_size) + ' -s cifar10 --lr_decay_f --cifar_big_arch --print_time', shell=True)
+

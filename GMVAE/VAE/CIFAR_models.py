@@ -126,10 +126,8 @@ class CIFAR_Encoder_CNN(nn.Module):
         self.verbose = verbose
         self.kernal  = 4  #4
         self.vae_flag = VAE
-        if self.vae_flag:
-            self.out_dim = 2*latent_dim
-        else:
-            self.out_dim = latent_dim
+        
+        self.out_dim = latent_dim
         
         self.model = nn.Sequential(
             # Convolutional layers
@@ -153,8 +151,11 @@ class CIFAR_Encoder_CNN(nn.Module):
             Reshape(self.lshape),
             
             # Fully connected layers
-            torch.nn.Linear(self.iels, self.out_dim)
-        )
+            # torch.nn.Linear(self.iels, self.out_dim)
+        )           
+        
+        self.mu_l=nn.Linear(self.iels, self.out_dim)
+        self.log_sigma2_l=nn.Linear(self.iels, self.out_dim)
 
         initialize_weights(self)
         
@@ -167,16 +168,13 @@ class CIFAR_Encoder_CNN(nn.Module):
         # Reshape for output
         z = z_img.view(z_img.shape[0], -1)
 
-        if self.vae_flag:
-            # Separate mu and sigma
-            mu = z[:, 0:self.latent_dim]
+        # Separate mu and sigma
+        mu = self.mu_l(z)
 
-            # ensure sigma is postive 
-            sigma = 1e-6 + F.softplus(z[:, self.latent_dim:])
-            
-            return [mu, sigma]
-        else:
-            return z
+        # ensure sigma is postive 
+        sigma = self.log_sigma2_l(z)
+        
+        return [mu, sigma]
 
 
 class CIFAR_SEncoder_CNN(nn.Module):
