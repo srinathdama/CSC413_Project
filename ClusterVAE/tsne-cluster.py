@@ -8,6 +8,7 @@ try:
     np.set_printoptions(threshold=sys.maxsize)
 
     import matplotlib
+    import matplotlib as mpl
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
@@ -38,6 +39,10 @@ except ImportError as e:
     print(e)
     raise ImportError
 
+print(mpl.get_configdir())
+print(mpl.get_cachedir())
+print(mpl.__version__)
+print(mpl.__file__)
 
 def main():
     global args
@@ -118,9 +123,10 @@ def main():
     # Stack latent space encoding
     #enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc_logits.cpu().detach().numpy()))
     #enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc.cpu().detach().numpy()))
-
+    enc  = enc_zmu.detach().cpu().numpy()
+    print(enc.shape)
     # Cluster with TSNE
-    tsne_enc = tsne.fit_transform(enc_zmu.detach().cpu().numpy())
+    tsne_enc = tsne.fit_transform(enc)
 
     # Convert to numpy for indexing purposes
     labels = labels.cpu().data.numpy()
@@ -145,9 +151,17 @@ def main():
     ax.set_title(r'%s'%fig_title, fontsize=24)
     ax.set_xlabel(r'$X^{\mathrm{tSNE}}_1$', fontsize=18)
     ax.set_ylabel(r'$X^{\mathrm{tSNE}}_2$', fontsize=18)
+    # ax.set_axis_on(True)
+    ax.patch.set_edgecolor('black')  
+    ax.patch.set_linewidth('2')
     plt.legend(title=r'Class', loc='best', numpoints=1, fontsize=16)
     plt.tight_layout()
+    plt.box(True)
+    ax = plt.gca()
+    ax.set_facecolor('w')
+    ax.tick_params(color='k')
     fig.savefig(figname)
+    
 
 if __name__ == "__main__":
     main()

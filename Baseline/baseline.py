@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 from sklearn.cluster import KMeans
 from scipy.stats import mode
 from sklearn.metrics import accuracy_score
@@ -15,6 +16,7 @@ from sklearn.metrics.cluster import normalized_mutual_info_score
 import seaborn as sns; sns.set()
 import pandas as pd
 # import os
+from sklearn.manifold import TSNE
 
 import utils 
 
@@ -137,6 +139,52 @@ def run_clustering(method, noof_clusters, target_names, data_dir,
     mnist_results.to_csv(os.path.join(run_dir, 
                     F'{data_set_name}_{method}_'+str(noof_clusters)+'_results.csv'))
 
+
+    # Load TSNE
+    # run_dir = 
+    perplexity = -1
+    if (perplexity < 0):
+        tsne = TSNE(n_components=2, verbose=1, init='pca', random_state=0)
+        fig_title = "PCA Initialization"
+        figname = os.path.join(run_dir, F'{data_set_name}_tsne-pca.png')
+    else:
+        tsne = TSNE(n_components=2, verbose=1, perplexity=perplexity, n_iter=300)
+        fig_title = "Perplexity = $%d$"%perplexity
+        figname = os.path.join(run_dir, F'{data_set_name}_tsne-plex%i.png'%perplexity)
+
+    tsne_enc = tsne.fit_transform(images_te.reshape(images_te.shape[0], -1)[0:1000])
+
+    # Convert to numpy for indexing purposes
+    labels = labels_te[0:1000]
+
+    # Color and marker for each true class
+    colors = cm.rainbow(np.linspace(0, 1, noof_clusters))
+    markers = matplotlib.markers.MarkerStyle.filled_markers
+
+    # Save TSNE figure to file
+    fig, ax = plt.subplots(figsize=(16,10))
+    for iclass in range(0, noof_clusters):
+        # Get indices for each class
+        idxs = labels==iclass
+        # Scatter those points in tsne dims
+        ax.scatter(tsne_enc[idxs, 0],
+                   tsne_enc[idxs, 1],
+                   marker=markers[iclass],
+                   c=colors[iclass],
+                   edgecolor=None,
+                   label=r'$%i$'%iclass)
+
+    ax.set_title(r'%s'%fig_title, fontsize=24)
+    ax.set_xlabel(r'$X^{\mathrm{tSNE}}_1$', fontsize=18)
+    ax.set_ylabel(r'$X^{\mathrm{tSNE}}_2$', fontsize=18)
+    ax.patch.set_edgecolor('black')  
+    ax.patch.set_linewidth('2')
+    plt.legend(title=r'Class', loc='best', numpoints=1, fontsize=16)
+    plt.tight_layout()
+    ax = plt.gca()
+    ax.set_facecolor('w')
+    fig.savefig(figname)
+
     return None
 
 
@@ -159,8 +207,8 @@ if __name__ == '__main__':
                         '/home/srinath/Project/CSC413_Project/ClusterVAE/datasets/cifar10/']
 
     data_sets      = ['mnist', 'fashion-mnist', 'cifar10']
-    pca_dim        = None #50
-    run_name       = 'baseline_full_size' #'pca'
+    pca_flag       = True  #None #50
+    run_name       = 'pca_all' #'baseline_full_size' #'pca'
 
 
     # for data_path, data_set in zip([dataset_paths[2]], [data_sets[2]]):
@@ -169,6 +217,16 @@ if __name__ == '__main__':
         print(data_set)
         run_dir = os.path.join(BASELINE_DIR, run_name)
         os.makedirs(run_dir, exist_ok=True)
+
+        if pca_flag:
+            if data_set=='mnist':
+                pca_dim = 30
+            elif data_set=='fashion-mnist':
+                pca_dim = 40
+            else:
+                pca_dim = 50
+        else:
+            pca_dim = None
 
         print('Kmeans')
         run_clustering('Kmeans', noof_clusters, target_names, data_path, data_set, run_dir, pca_dim)

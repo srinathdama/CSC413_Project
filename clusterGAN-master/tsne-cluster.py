@@ -8,6 +8,7 @@ try:
     np.set_printoptions(threshold=sys.maxsize)
 
     import matplotlib
+    import matplotlib as mpl
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
@@ -36,14 +37,17 @@ try:
 except ImportError as e:
     print(e)
     raise ImportError
-
+print(mpl.get_configdir())
+print(mpl.get_cachedir())
+print(mpl.__version__)
+print(mpl.__file__)
 
 def main():
     global args
     parser = argparse.ArgumentParser(description="TSNE generation script")
     parser.add_argument("-r", "--run_dir", dest="run_dir", help="Training run directory")
     parser.add_argument("-p", "--perplexity", dest="perplexity", default=-1, type=int,  help="TSNE perplexity")
-    parser.add_argument("-n", "--n_samples", dest="n_samples", default=100, type=int,  help="Number of samples")
+    parser.add_argument("-n", "--n_samples", dest="n_samples", default=1000, type=int,  help="Number of samples")
     args = parser.parse_args()
 
     # TSNE setup
@@ -99,7 +103,7 @@ def main():
     # Stack latent space encoding
     enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc_logits.cpu().detach().numpy()))
     #enc = np.hstack((enc_zn.cpu().detach().numpy(), enc_zc.cpu().detach().numpy()))
-
+    print(enc.shape)
     # Cluster with TSNE
     tsne_enc = tsne.fit_transform(enc)
 

@@ -66,7 +66,7 @@ def main():
     parser.add_argument('--cifar_big_arch', dest='cifar_big_arch', action='store_true')
     parser.add_argument('--printtime', dest='print_time', action='store_true')
     parser.set_defaults(vae_flag=True)
-    parser.set_defaults(lr_decay=True)
+    parser.set_defaults(lr_decay=False)
     parser.set_defaults(cifar_big_arch=False)
     parser.set_defaults(print_time=False)
     args = parser.parse_args()
@@ -86,7 +86,8 @@ def main():
     n_epochs = args.n_epochs
     batch_size = args.batch_size
     test_batch_size = 5000
-    lr0 = args.lr
+    # lr0 = args.lr
+    lr0 = (batch_size/64)*(1e-4)
     if lr_decay_f:
         lr = lr_decay(0, lr0)
     else:

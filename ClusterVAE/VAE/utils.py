@@ -14,7 +14,7 @@ try:
     from itertools import chain as ichain
 
     import matplotlib
-    matplotlib.use('Agg')
+    # matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from sklearn.cluster import KMeans
     from scipy.stats import mode
