@@ -12,3 +12,8 @@ The `-r` option denotes the run name, `-s` the dataset (currently MNIST, Fashion
 
 ## Issue
 Training failed as ''' self.pi''' in 'CSC413_Project/GMVAE/VAE/VaDE_model.py' is becoming negative during training and everything become nan after that. 
+
+## References
+https://github.com/GuHongyang/VaDE-pytorch
+
+
