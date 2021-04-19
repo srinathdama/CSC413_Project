@@ -22,7 +22,8 @@ python train.py -r test_run -s mnist -b 64 -n 300
 where a directory `runs/mnist/test_run` will be made and contain the generated output
 (models, example generated instances, training figures) from the training run.
 The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fashion-MNIST),
-`-b` the batch size, and `-n` the number of training epochs.
+`-b` the batch size, and `-n` the number of training epochs. Also change the path to datasets 
+in clustergan/dataset.py to you local cache.
 
 ```
 python gen-examples -r <directory of your saved model>  -b <batchsize>
@@ -31,6 +32,7 @@ python gen-examples -r <directory of your saved model>  -b <batchsize>
 ```
 python tsne-cluster.py -r <directory of your saved model> -n <number of samples>
 ```
+To run the metrics. Remember to change the file path to your saved model.
 ```
 python criteria.py
 ```
