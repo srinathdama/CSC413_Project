@@ -7,7 +7,7 @@ python train.py -r test_run -s mnist -b 256 -n 300
 ```
 where a directory `runs/mnist/test_run` will be made and contain the generated output
 (models, example generated instances, training figures) from the training run.
-The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fashion-MNIST),
+The `-r` option denotes the run name, `-s` the dataset (currently MNIST, Fashion-MNIST, CIFAR10)
 `-b` the batch size, and `-n` the number of training epochs.
 
 
