@@ -49,37 +49,22 @@ def get_dataset(dataset_name='mnist'):
 def get_dataloader(dataset_name='mnist', data_dir='', batch_size=64, train_set=True, num_workers=1):
 
     dset = get_dataset(dataset_name)
+    path = "C:\\Users\\BOBLY\\zzz\\MNIST"
+    if dataset_name == 'cifar-10':
+        path = "C:\\Users\\BOBLY\\zzz\\cifar-10"
+    elif dataset_name == 'fashion-mnist':
+        path = "C:\\Users\\BOBLY\\zzz\\Fashion-MNIST"
+    else:
+        path= "C:\\Users\\BOBLY\\zzz\\MNIST"
 
-    if dataset_name=='mnist':
-        dataloader = torch.utils.data.DataLoader(
-            dset("/home/srinath/Project/CSC413_Project/DATASETS/MNIST/", train=train_set, download=False,
-                        transform=transforms.Compose([
-                            transforms.ToTensor(),
-                            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                        ])),
-            num_workers=num_workers,
-            batch_size=batch_size,
-            shuffle=True)
-    elif dataset_name=='fashion-mnist':
-        dataloader = torch.utils.data.DataLoader(
-            dset(data_dir, train=train_set, download=True,
-                        transform=transforms.Compose([
-                            transforms.ToTensor(),
-                            #transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                        ])),
-            num_workers=num_workers,
-            batch_size=batch_size,
-            shuffle=True)
-    elif dataset_name=='cifar10':
-        # https://github.com/kuangliu/pytorch-cifar/issues/19
-        dataloader = torch.utils.data.DataLoader(
-            dset(data_dir, train=train_set, download=True,
-                        transform=transforms.Compose([
-                            transforms.ToTensor(),
-                            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
-                        ])),
-            num_workers=num_workers,
-            batch_size=batch_size,
-            shuffle=True)
+    dataloader = torch.utils.data.DataLoader(
+        dset(path, train=train_set, download=False,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                        #    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261))
+                       ])),
+        num_workers=num_workers,
+        batch_size=batch_size,
+        shuffle=True)
 
     return dataloader
