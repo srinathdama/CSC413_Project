@@ -1,17 +1,14 @@
 
-## Run ClusterVAE on MNIST
+## Run Baseline 
 
-To run ClusterVAE on the MNIST dataset, ensure the package is setup and then run
 ```
-python train.py -r test_run -s mnist -b 256 -n 300
+python baseline.py 
 ```
-where a directory `runs/mnist/test_run` will be made and contain the generated output
-(models, example generated instances, training figures) from the training run.
-The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fashion-MNIST),
-`-b` the batch size, and `-n` the number of training epochs.
 
+## Refereces
 
-Run criteria.py file to load the trained model and train GMM/Kmeans models on the latent embedding vector. Results will be saved to `runs/mnist/test_run`
-```
-python criteria.py
-```
+https://jakevdp.github.io/PythonDataScienceHandbook/05.11-k-means.html
+
+https://jakevdp.github.io/PythonDataScienceHandbook/05.12-gaussian-mixtures.html
+
+https://stackoverflow.com/questions/62958011/how-to-correctly-parse-mnist-datasetidx-format-into-python-arrays
