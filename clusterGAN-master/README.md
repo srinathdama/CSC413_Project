@@ -23,7 +23,7 @@ where a directory `runs/mnist/test_run` will be made and contain the generated o
 (models, example generated instances, training figures) from the training run.
 The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fashion-MNIST),
 `-b` the batch size, and `-n` the number of training epochs. Also change the path to datasets 
-in clustergan/dataset.py to you local cache.
+in clustergan/datasets.py to you local cache.
 
 ```
 python gen-examples -r <directory of your saved model>  -b <batchsize>
