@@ -25,11 +25,14 @@ The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fash
 `-b` the batch size, and `-n` the number of training epochs.
 
 ```
-python gen-examples -r test_run -s mnist -b 100
+python gen-examples -r <directory of your saved model>  -b <batchsize>
 ```
 
 ```
-python tsne-cluster.py -r test_run -s mnist
+python tsne-cluster.py -r <directory of your saved model> -n <number of samples>
+```
+```
+python criteria.py
 ```
 
 ## Referenes
