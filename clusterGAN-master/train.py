@@ -27,8 +27,8 @@ try:
     from sklearn.metrics.cluster import normalized_mutual_info_score
 
     from clusgan.definitions import DATASETS_DIR, RUNS_DIR
-    from clusgan.models_cifar import Generator_CNN, Encoder_CNN, Discriminator_CNN
-    # from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
+    # from clusgan.models_cifar import Generator_CNN, Encoder_CNN, Discriminator_CNN
+    from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
     from clusgan.utils import save_model, calc_gradient_penalty, sample_z, cross_entropy
     from clusgan.datasets import get_dataloader, dataset_list
     from clusgan.plots import plot_train_loss
@@ -63,11 +63,11 @@ def main():
     decay = 2.5*1e-5
     n_skip_iter = 1
 
-    img_size = 32 #28
-    channels = 3 #1
+    img_size = 28 #28
+    channels = 1 #1
    
     # Latent space info
-    latent_dim = 50
+    latent_dim = 30
     n_c = 10
     betan = 10
     betac = 10
@@ -111,11 +111,11 @@ def main():
     encoder = Encoder_CNN(latent_dim, n_c)
     discriminator = Discriminator_CNN(wass_metric=wass_metric)
 
-    # encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\encoder.pth.tar",
+    # encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs32_norm_and_var_01\\models\\200encoder.pth.tar",
     #                             map_location=device)  
-    # generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\generator.pth.tar",
+    # generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs32_norm_and_var_01\\models\\200generator.pth.tar",
     #                             map_location=device) 
-    # discriminator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\discriminator.pth.tar",
+    # discriminator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs32_norm_and_var_01\\models\\200discriminator.pth.tar",
     #                             map_location=device)
 
     # generator.load_state_dict(generator_dict)

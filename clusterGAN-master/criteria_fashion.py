@@ -40,18 +40,18 @@ def main():
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cuda = True if torch.cuda.is_available() else False
-    latent_dim = 30
-    n_c = 13
+    latent_dim = 40
+    n_c = 10
     classifier = Net().to(device)                 
     generator = Generator_CNN(latent_dim, n_c, (1, 28, 28)).to(device) 
     encoder = Encoder_CNN(latent_dim, n_c).to(device) 
 
-    encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\300epoch_z30_wass_bs64_cluster_13\\models\\encoder.pth.tar",
+    encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\fashion-mnist\\300epoch_z40_wass_bs64_wass_matric\\models\\encoder.pth.tar",
                                 map_location=device)  
-    generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\300epoch_z30_wass_bs64_cluster_13\\models\\generator.pth.tar",
+    generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\fashion-mnist\\300epoch_z40_wass_bs64_wass_matric\\models\\generator.pth.tar",
                                 map_location=device) 
 
-    classifier.load_state_dict(torch.load("mnist_cnn.pt"))
+    classifier.load_state_dict(torch.load("fashion-mnist_cnn.pt"))
     generator.load_state_dict(generator_dict)
     encoder.load_state_dict(encoder_dict)
 
@@ -86,7 +86,7 @@ def main():
 
     # reconstruction accuracy
     batch_size = 5000
-    testdata = get_dataloader(train_set=False, batch_size=batch_size)
+    testdata = get_dataloader(dataset_name='fashion-mnist', train_set=False, batch_size=batch_size)
     test_imgs, test_labels = next(iter(testdata))
     test_imgs = Variable(test_imgs.type(Tensor))
 

@@ -8,7 +8,6 @@ try:
     np.set_printoptions(threshold=sys.maxsize)
 
     import matplotlib
-    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     import pandas as pd

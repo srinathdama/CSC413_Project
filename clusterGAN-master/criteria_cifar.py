@@ -4,12 +4,6 @@ try:
     import argparse
     import os
     import numpy as np
-
-    import matplotlib
-    import matplotlib.pyplot as plt
-
-    import pandas as pd
-    
     from torch.autograd import Variable
     from torch.autograd import grad as torch_grad
     
@@ -26,12 +20,10 @@ try:
     from sklearn.metrics.cluster import adjusted_rand_score
     from sklearn.metrics.cluster import normalized_mutual_info_score
 
-    from clusgan.definitions import DATASETS_DIR, RUNS_DIR
-    from clusgan.models import Generator_CNN, Encoder_CNN, Discriminator_CNN
-    from clusgan.utils import save_model, calc_gradient_penalty, sample_z, cross_entropy
+    from clusgan.models_cifar import Generator_CNN, Encoder_CNN, Discriminator_CNN
     from clusgan.datasets import get_dataloader, dataset_list
-    from clusgan.plots import plot_train_loss
-    from classifier import Net
+    from clusgan.utils import sample_z
+    
 except ImportError as e:
     print(e)
     raise ImportError
@@ -40,18 +32,17 @@ def main():
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     cuda = True if torch.cuda.is_available() else False
-    latent_dim = 30
-    n_c = 13
-    classifier = Net().to(device)                 
-    generator = Generator_CNN(latent_dim, n_c, (1, 28, 28)).to(device) 
+    latent_dim = 50
+    n_c = 10
+    classifier =  torch.hub.load("chenyaofo/pytorch-cifar-models", "cifar10_resnet20", pretrained=True).to(device)                 
+    generator = Generator_CNN(50, 10, (3, 32, 32)).to(device) 
     encoder = Encoder_CNN(latent_dim, n_c).to(device) 
 
-    encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\300epoch_z30_wass_bs64_cluster_13\\models\\encoder.pth.tar",
+    encoder_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\encoder.pth.tar",
                                 map_location=device)  
-    generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\mnist\\300epoch_z30_wass_bs64_cluster_13\\models\\generator.pth.tar",
+    generator_dict = torch.load("C:\\Users\\BOBLY\\zzz\\final_project\\CSC413_Project\\clusterGAN-master\\runs\\cifar-10\\300epoch_z50_wass_bs64_wass_matric\\models\\generator.pth.tar",
                                 map_location=device) 
 
-    classifier.load_state_dict(torch.load("mnist_cnn.pt"))
     generator.load_state_dict(generator_dict)
     encoder.load_state_dict(encoder_dict)
 
@@ -85,8 +76,8 @@ def main():
     print(f"mode accuracy: {mode_accuracy}\n")
 
     # reconstruction accuracy
-    batch_size = 5000
-    testdata = get_dataloader(train_set=False, batch_size=batch_size)
+    batch_size = 1000
+    testdata = get_dataloader(dataset_name='cifar-10', train_set=False, batch_size=batch_size)
     test_imgs, test_labels = next(iter(testdata))
     test_imgs = Variable(test_imgs.type(Tensor))
 

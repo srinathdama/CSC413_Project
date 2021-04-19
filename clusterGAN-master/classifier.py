@@ -115,8 +115,8 @@ def main():
         transforms.Normalize((0.1307,), (0.3081,))
         ])
 
-    train_loader = get_dataloader()
-    test_loader = get_dataloader(train_set=False)
+    train_loader = get_dataloader(dataset_name='fashion-mnist')
+    test_loader = get_dataloader(dataset_name='fashion-mnist',train_set=False)
 
     model = Net().to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
@@ -128,7 +128,7 @@ def main():
         scheduler.step()
 
     if args.save_model:
-        torch.save(model.state_dict(), "mnist_cnn.pt")
+        torch.save(model.state_dict(), "fashion-mnist_cnn.pt")
 
 
 if __name__ == '__main__':
