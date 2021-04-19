@@ -1,17 +1,14 @@
 
-## Run ClusterVAE on MNIST
+## Run VaDE on CIFAR-10
 
-To run ClusterVAE on the MNIST dataset, ensure the package is setup and then run
+To run VaDE, ensure the package is setup and then run
 ```
-python train.py -r test_run -s mnist -b 256 -n 300
+python train.py -r test_run -s cfiar10 -b 64 -n 300
 ```
 where a directory `runs/mnist/test_run` will be made and contain the generated output
 (models, example generated instances, training figures) from the training run.
-The `-r` option denotes the run name, `-s` the dataset (currently MNIST and Fashion-MNIST),
+The `-r` option denotes the run name, `-s` the dataset (currently MNIST, Fashion-MNIST, CIFAR10),
 `-b` the batch size, and `-n` the number of training epochs.
 
-
-Run criteria.py file to load the trained model and train GMM/Kmeans models on the latent embedding vector. Results will be saved to `runs/mnist/test_run`
-```
-python criteria.py
-```
+## Issue
+Training failed as ''' self.pi''' in 'CSC413_Project/GMVAE/VAE/VaDE_model.py' is becoming negative during training and everything become nan after that. 
