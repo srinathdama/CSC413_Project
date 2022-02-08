@@ -1,3 +1,5 @@
+# Clustering using deep generative models
+
 Instructions to train each method are given in each folder's Readme.md
 
 
